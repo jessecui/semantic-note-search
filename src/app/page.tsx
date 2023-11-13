@@ -1,5 +1,4 @@
 import Image from "next/image";
-// import styles from './page.module.css'
 
 export default function Home() {
   return (
@@ -16,7 +15,7 @@ export default function Home() {
         Crux is an app designed to organize your ideas in a simple and smart
         way, helping you create better content faster
       </p>
-      <button>Get started</button>
+      <a href="/dashboard">Get started</a>
     </main>
   );
 }
