@@ -3,12 +3,10 @@ import "@mantine/core/styles.css";
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 
-import "./globals.css";
-
 const outfit = Outfit({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Crux: A Playground for Ideas",
+  title: "Crux: A Playground for Notes",
   description:
     "Crux is an app designed to organize your ideas in a simple and smart way, helping you create better content faster",
 };
@@ -23,8 +21,15 @@ export default function RootLayout({
       <head>
         <ColorSchemeScript />
       </head>
-      <body className={outfit.className}>
-        <MantineProvider>{children}</MantineProvider>
+      <body>
+        <MantineProvider
+          theme={{
+            fontFamily: outfit.style.fontFamily,
+            headings: { fontWeight: "500" },
+          }}
+        >
+          {children}
+        </MantineProvider>
       </body>
     </html>
   );
