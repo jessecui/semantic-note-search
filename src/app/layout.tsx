@@ -1,7 +1,10 @@
 import { ColorSchemeScript, MantineProvider } from "@mantine/core";
 import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css";
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
+
+import favicon from "./favicon.ico";
 
 const outfit = Outfit({ subsets: ["latin"] });
 
@@ -9,6 +12,9 @@ export const metadata: Metadata = {
   title: "Crux: A Playground for Notes",
   description:
     "Crux is an app designed to organize your ideas in a simple and smart way, helping you create better content faster",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({

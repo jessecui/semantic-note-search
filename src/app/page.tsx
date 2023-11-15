@@ -78,12 +78,12 @@ export default function Home() {
                 />
               </Box>
             </Center>
-            <Title order={2} ta="center" size="1.5rem" py={16}>
+            <Title order={2} ta="center" size="1.4rem" py={16}>
               Capture thoughts fast
             </Title>
             <Text ta="center">
-              Crux offers instant access for typing as soon as the app launches,
-              ideal for those who require a swift space to capture fleeting
+              Crux offers instant no-click typing as soon as the app launches,
+              ideal for those who require a swift space to jot down fleeting
               insights before they slip away.
             </Text>
           </GridCol>
@@ -103,11 +103,11 @@ export default function Home() {
                 />
               </Box>
             </Center>
-            <Title order={2} ta="center" size="1.5rem" py={16}>
+            <Title order={2} ta="center" size="1.4rem" py={16}>
               See related ideas
             </Title>
             <Text ta="center">
-              Uncover relations between your notes with advanced AI embedding
+              Uncover relations between your notes with AI language
               models, enabling you to make connections with Crux you might have
               missed otherwise.
             </Text>
@@ -128,12 +128,12 @@ export default function Home() {
                 />
               </Box>
             </Center>
-            <Title order={2} ta="center" size="1.5rem" py={16}>
+            <Title order={2} ta="center" size="1.4rem" py={16}>
               Organize and create
             </Title>
             <Text ta="center">
               Refine notes from your unique experiences into consolidated
-              outlines in Crux, giving you a defined foundation to craft
+              outlines in Crux, providing you a clear starting point to craft
               original, compelling works.
             </Text>
           </GridCol>
