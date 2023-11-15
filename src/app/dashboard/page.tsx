@@ -105,12 +105,7 @@ export default function Dashboard() {
                   <InputLabel c="#5F6D7E" fw="700" mb={12}>
                     Time Range
                   </InputLabel>
-                  <Flex
-                    justify="space-between"
-                    align="center"
-                    c="#C1CBD8"
-                    mb={24}
-                  >
+                  <Flex justify="space-between" align="center" c="#C1CBD8">
                     <DatePickerInput
                       leftSection={<IconCalendar />}
                       placeholder="Pick start date"
@@ -129,11 +124,12 @@ export default function Dashboard() {
                       valueFormat="MMM D, YYYY"
                     />
                   </Flex>
-                  <InputLabel c="#5F6D7E" fw="700" mb={12}>
-                    Note Space
-                  </InputLabel>
-                  <Select placeholder="Pick note space" data={["All Notes"]} />
                 </Paper>
+                <Select
+                  placeholder="View a Note Space"
+                  data={["All Notes"]}
+                  clearable
+                />
               </Stack>
             </Container>
           </GridCol>
