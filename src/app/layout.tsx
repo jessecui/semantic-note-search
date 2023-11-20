@@ -4,8 +4,6 @@ import "@mantine/dates/styles.css";
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 
-import favicon from "./favicon.ico";
-
 const outfit = Outfit({ subsets: ["latin"] });
 
 export const metadata: Metadata = {

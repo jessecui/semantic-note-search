@@ -7,6 +7,7 @@ import {
   Flex,
   Grid,
   GridCol,
+  Group,
   Text,
   Title,
 } from "@mantine/core";
@@ -26,7 +27,11 @@ export default function Home() {
               height={30}
               priority
             />
-            <Button>Sign Up</Button>
+            <Group><Link href="/login" passHref>
+              <Button variant="outline">Log In</Button>
+            </Link><Link href="/signup" passHref>
+              <Button>Sign Up</Button>
+            </Link></Group>            
           </Flex>
         </nav>
         <Grid align="center">
@@ -46,7 +51,7 @@ export default function Home() {
               </Text>
               .
             </Text>
-            <Link href="/dashboard" passHref>
+            <Link href="/signup" passHref>
               <Button>Get started</Button>
             </Link>
           </GridCol>
@@ -107,12 +112,12 @@ export default function Home() {
               See related ideas
             </Title>
             <Text ta="center">
-              Uncover relations between your notes with AI language
-              models, enabling you to make connections with Crux you might have
-              missed otherwise.
+              Uncover relations between your notes with AI language models,
+              enabling you to make connections with Crux you might have missed
+              otherwise.
             </Text>
           </GridCol>
-          <GridCol span={4} py={32}>
+          <GridCol span={4} pt={32} pb={48}>
             <Center>
               <Box
                 w={90}
