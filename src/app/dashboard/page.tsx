@@ -39,6 +39,7 @@ export default function Dashboard() {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const editableNoteRef = useRef<HTMLDivElement>(null);
+  const [notes, setNotes] = useState<string[]>([]);
 
   const url = "https://faozpgzgwapvpomsfuig.supabase.co";
   const publicKey =
@@ -56,9 +57,29 @@ export default function Dashboard() {
       }
     };
     fetchSession();
-    
+
     editableNoteRef.current?.focus();
   }, [router]);
+
+  useEffect(() => {
+    const fetchNotes = async () => {
+      if (session?.user.id) {
+        const supabaseClient = createClient(url, publicKey);
+        const { data, error } = await supabaseClient
+          .from("Notes")
+          .select("text")
+          .eq("user_id", session?.user.id)
+          .order("created_at", { ascending: false });
+
+        if (error) console.log(error);
+        else {
+          const notes = data.map((note) => note.text);
+          setNotes(notes);
+        }
+      }
+    };
+    fetchNotes();
+  }, [session]);
 
   return (
     <AppShell navbar={{ width: 240, breakpoint: "xs" }} padding="md">
@@ -133,21 +154,38 @@ export default function Dashboard() {
                 <Text size="lg" fw={500} mb={8}>
                   All Notes
                 </Text>
-                <Text ref={editableNoteRef} mb={16} contentEditable></Text>
+                <Text
+                  ref={editableNoteRef}
+                  mb={16}
+                  contentEditable
+                  onKeyDown={async (e) => {
+                    if (e.key == "Enter") {
+                      e.preventDefault();
+
+                      const noteText = editableNoteRef.current?.textContent;
+
+                      if (noteText) {
+                        editableNoteRef.current.textContent = "";
+
+                        setNotes((notes) => [noteText || "", ...notes]);
+
+                        const supabase = createClient(url, publicKey);
+                        const { data, error } = await supabase
+                          .from("Notes")
+                          .insert([{ text: noteText }])
+                          .select();
+                      }
+                    }
+                  }}
+                ></Text>
                 <Text size="sm" fw={500} c="#5F6D7E" mb={8}>
                   Today
                 </Text>
-                <Text contentEditable>
-                  Success, often perceived as the pinnacle of one&apos;s efforts
-                  and ambitions, is a multifaceted concept that transcends mere
-                  material accomplishments. While society frequently measures
-                  success in terms of wealth, titles, or accolades, its true
-                  essence lies in the fulfillment of personal goals, the
-                  enrichment of one&apos;s life, and the positive impact one
-                  leaves on others. Success is as much about the journey -
-                  marked by learning, resilience, and growth - as it is about
-                  the destination.
-                </Text>
+                <Stack>
+                  {notes.map((note, index) => (
+                    <Text key={index}>{note}</Text>
+                  ))}
+                </Stack>
               </Paper>
             </Container>
           </GridCol>
