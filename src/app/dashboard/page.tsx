@@ -33,6 +33,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import "./dashboard.css";
+
 export default function Dashboard() {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
@@ -80,6 +82,281 @@ export default function Dashboard() {
     };
     fetchNotes();
   }, [session]);
+
+  useEffect(() => {
+    function isCursorInFirstLine(element: HTMLElement) {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return false;
+
+      const range = selection.getRangeAt(0);
+      const rangeRect = range.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+
+      const threshold = 10; // pixels from the top of the element
+      return rangeRect.top - elementRect.top <= threshold;
+    }
+
+    function isCursorInLastLine(element: HTMLElement) {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return false;
+
+      const range = selection.getRangeAt(0);
+      const rangeRect = range.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+
+      const threshold = 10; // pixels from the bottom of the element
+      return elementRect.bottom - rangeRect.bottom <= threshold;
+    }
+
+    function getCaretOffsetWithinLine(element: HTMLElement) {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) {
+        return -1;
+      }
+
+      const range = selection.getRangeAt(0);
+      const startPosition = findLineStart(range, element);
+
+      // Adjust the start position if it's an element node
+      let startNode = startPosition.node;
+      let startOffset = startPosition.offset;
+      if (startNode.nodeType === Node.ELEMENT_NODE) {
+        // Assuming the caret is within the first text node of this element
+        startNode = startNode.childNodes[startOffset] || startNode;
+        startOffset = 0;
+      }
+
+      // Measure the range from the start of the line to the caret
+      const temporaryRange = document.createRange();
+      temporaryRange.setStart(startNode, startOffset);
+      temporaryRange.setEnd(range.endContainer, range.endOffset);
+
+      // Measure the length of the range
+      const span = document.createElement("span");
+      span.appendChild(temporaryRange.cloneContents());
+      return span.textContent!.length;
+    }
+
+    function findLineStart(range: Range, containerElement: HTMLElement) {
+      const caretRect = range.getBoundingClientRect();
+      const caretTop = caretRect.top;
+
+      let node = range.startContainer;
+      let offset = range.startOffset;
+
+      while (node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          for (let i = offset - 1; i >= 0; i--) {
+            const charRange = document.createRange();
+            charRange.setStart(node, i);
+            charRange.setEnd(node, i + 1);
+
+            const charRect = charRange.getBoundingClientRect();
+            if (charRect.top < caretTop) {
+              // Found the start of the line
+              return { node: node, offset: i + 1 };
+            }
+          }
+        }
+
+        // Move to the previous node
+        let prevNode = node.previousSibling;
+        while (prevNode && prevNode.nodeType !== Node.TEXT_NODE) {
+          prevNode = prevNode.previousSibling;
+        }
+
+        if (prevNode) {
+          node = prevNode;
+          offset = node.textContent!.length;
+        } else {
+          // If there's no previous text node, we're at the start of the container
+          break;
+        }
+      }
+
+      return { node: containerElement, offset: 0 };
+    }
+
+    function getCaretHorizontalPosition() {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return null;
+
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      return rect.left;
+    }
+
+    function setCaretToFirstLineAtPosition(
+      element: HTMLElement,
+      horizontalPosition: number,
+    ) {
+      // Ensure the element is a paragraph and contentEditable
+      if (element.tagName !== "P" || !element.isContentEditable) {
+        console.error("Element is not a contentEditable <p> tag.");
+        return;
+      }
+
+      // Create a range and selection object
+      const range = document.createRange();
+      const sel = window.getSelection();
+      sel!.removeAllRanges();
+
+      // Determine the top of the element's bounding box
+      const elementRect = element.getBoundingClientRect();
+      const elementTop = elementRect.top;
+
+      // Variables to store the position closest to the horizontal position on the first line
+      let closestPosition = 0;
+      let closestDistance = Number.MAX_VALUE;
+      let isFirstLineProcessed = false;
+
+      for (let i = 0; i < element.textContent!.length; i++) {
+        range.setStart(element.firstChild!, i);
+        range.setEnd(element.firstChild!, i + 1);
+
+        // Get the rectangle for the current character
+        const rect = range.getBoundingClientRect();
+
+        // Check if the current character is on the first line
+        if (rect.top <= elementTop + rect.height) {
+          const distanceToLeft = Math.abs(rect.left - horizontalPosition);
+          const distanceToRight = Math.abs(rect.right - horizontalPosition);
+
+          // Determine if the left or right edge is closer
+          if (
+            distanceToLeft < closestDistance ||
+            distanceToRight < closestDistance
+          ) {
+            closestDistance = Math.min(distanceToLeft, distanceToRight);
+            closestPosition = i;
+            // If the right side is closer, place the cursor after the character
+            if (distanceToRight < distanceToLeft) {
+              closestPosition += 1;
+            }
+          }
+        } else if (isFirstLineProcessed) {
+          break;
+        }
+      }
+
+      // Set the caret to the closest position on the first line
+      range.setStart(element.firstChild!, closestPosition);
+      range.collapse(true);
+      sel!.addRange(range);
+    }
+
+    function setCaretToLastLineAtPosition(
+      element: HTMLElement,
+      horizontalPosition: number,
+    ) {
+      // Ensure the element is a paragraph and contentEditable
+      if (element.tagName !== "P" || !element.isContentEditable) {
+        console.error("Element is not a contentEditable <p> tag.");
+        return;
+      }
+
+      // Create a range and selection object
+      const range = document.createRange();
+      const sel = window.getSelection();
+      sel!.removeAllRanges();
+
+      // Determine the bottom of the element's bounding box
+      const elementRect = element.getBoundingClientRect();
+      const elementBottom = elementRect.bottom;
+
+      // Variables to store the position closest to the horizontal position on the last line
+      let closestPosition = 0;
+      let closestDistance = Number.MAX_VALUE;
+      let isLastLineReached = false;
+
+      for (let i = 0; i < element.textContent!.length; i++) {
+        range.setStart(element.firstChild!, i);
+        range.setEnd(element.firstChild!, i + 1);
+
+        // Get the rectangle for the current character
+        const rect = range.getBoundingClientRect();
+
+        // Check if we have reached the last line
+        if (rect.bottom >= elementBottom - rect.height) {
+          const distanceToLeft = Math.abs(rect.left - horizontalPosition);
+          const distanceToRight = Math.abs(rect.right - horizontalPosition);
+
+          // Determine if the left or right edge is closer
+          if (
+            distanceToLeft < closestDistance ||
+            distanceToRight < closestDistance
+          ) {
+            closestDistance = Math.min(distanceToLeft, distanceToRight);
+            closestPosition = i;
+            // If the right side is closer, place the cursor after the character
+            if (distanceToRight < distanceToLeft) {
+              closestPosition += 1;
+            }
+          }
+        } else if (isLastLineReached) {
+          break;
+        }
+      }
+
+      // Set the caret to the closest position on the last line
+      range.setStart(element.firstChild!, closestPosition);
+      range.collapse(true);
+      sel!.addRange(range);
+    }
+
+    function handleKeyDown(event: KeyboardEvent, index: number) {
+      const currentElement = event.target as HTMLElement;
+
+      if (event.key === "ArrowDown" && index < notes.length - 1) {
+        const cursorInLastLine = isCursorInLastLine(currentElement);
+        if (cursorInLastLine) {
+          event.preventDefault(); // Prevent moving to next line in the same element
+
+          const horizontalPos = getCaretHorizontalPosition() as number;
+          const nextElement = document.getElementById(
+            `note-${index + 1}`,
+          ) as HTMLElement;
+          nextElement.focus();
+          setCaretToFirstLineAtPosition(nextElement, horizontalPos);
+        }
+      } else if (event.key === "ArrowUp" && index > 0) {
+        const cursorInFirstLine = isCursorInFirstLine(currentElement);
+        if (cursorInFirstLine) {
+          event.preventDefault(); // Prevent moving to previous line in the same element
+
+          const horizontalPos = getCaretHorizontalPosition() as number;
+          const previousElement = document.getElementById(
+            `note-${index - 1}`,
+          ) as HTMLElement;
+          previousElement.focus();
+          setCaretToLastLineAtPosition(previousElement, horizontalPos);
+        }
+      }
+    }
+
+    notes.forEach((_, index) => {
+      const contentEditableDiv = document.getElementById(`note-${index}`);
+
+      if (contentEditableDiv) {
+        contentEditableDiv.addEventListener("keydown", (e) =>
+          handleKeyDown(e, index),
+        );
+      }
+    });
+
+    // Cleanup function
+    return () => {
+      // Remove event listeners from all notes
+      notes.forEach((_, index) => {
+        const contentEditableDiv = document.getElementById(`note-${index}`);
+        if (contentEditableDiv) {
+          contentEditableDiv.removeEventListener("keydown", (e) =>
+            handleKeyDown(e, index),
+          );
+        }
+      });
+    };
+  }, [notes]);
 
   return (
     <AppShell navbar={{ width: 240, breakpoint: "xs" }} padding="md">
@@ -150,7 +427,15 @@ export default function Dashboard() {
                 leftSection={<IconSearch size={16} />}
                 mb={32}
               />
-              <Paper radius={8} withBorder px={48} py={36}>
+              <Paper
+                radius={8}
+                withBorder
+                px={48}
+                py={36}
+                mah={600}
+                style={{ overflow: "auto" }}
+                className="custom-scrollbar"
+              >
                 <Text size="lg" fw={500} mb={8}>
                   All Notes
                 </Text>
@@ -183,7 +468,20 @@ export default function Dashboard() {
                 </Text>
                 <Stack>
                   {notes.map((note, index) => (
-                    <Text key={index}>{note}</Text>
+                    <Text
+                      id={`note-${index}`}
+                      key={index}
+                      contentEditable
+                      dangerouslySetInnerHTML={{ __html: note }}
+                      onChange={async (e) => {
+                        e.preventDefault();
+                        const target = e.target as HTMLElement;
+                        setNotes((notes) => {
+                          notes[index] = target.innerText;
+                          return notes;
+                        });
+                      }}
+                    />
                   ))}
                 </Stack>
               </Paper>
