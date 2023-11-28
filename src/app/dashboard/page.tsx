@@ -86,17 +86,22 @@ export default function Dashboard() {
   useEffect(() => {
     function isCursorInFirstLine(element: HTMLElement) {
       const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) return false;
+      if (!selection || selection.rangeCount === 0) return false;      
 
-      const range = selection.getRangeAt(0);
+      let range = selection.getRangeAt(0);                
+
       const rangeRect = range.getBoundingClientRect();
-      const elementRect = element.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();      
 
-      const threshold = 10; // pixels from the top of the element
+      const threshold = 10; // pixels from the top of the element      
       return rangeRect.top - elementRect.top <= threshold;
     }
 
     function isCursorInLastLine(element: HTMLElement) {
+      if (element.textContent!.length === 0) {
+        return true;
+      }
+
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0) return false;
 
@@ -106,75 +111,6 @@ export default function Dashboard() {
 
       const threshold = 10; // pixels from the bottom of the element
       return elementRect.bottom - rangeRect.bottom <= threshold;
-    }
-
-    function getCaretOffsetWithinLine(element: HTMLElement) {
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) {
-        return -1;
-      }
-
-      const range = selection.getRangeAt(0);
-      const startPosition = findLineStart(range, element);
-
-      // Adjust the start position if it's an element node
-      let startNode = startPosition.node;
-      let startOffset = startPosition.offset;
-      if (startNode.nodeType === Node.ELEMENT_NODE) {
-        // Assuming the caret is within the first text node of this element
-        startNode = startNode.childNodes[startOffset] || startNode;
-        startOffset = 0;
-      }
-
-      // Measure the range from the start of the line to the caret
-      const temporaryRange = document.createRange();
-      temporaryRange.setStart(startNode, startOffset);
-      temporaryRange.setEnd(range.endContainer, range.endOffset);
-
-      // Measure the length of the range
-      const span = document.createElement("span");
-      span.appendChild(temporaryRange.cloneContents());
-      return span.textContent!.length;
-    }
-
-    function findLineStart(range: Range, containerElement: HTMLElement) {
-      const caretRect = range.getBoundingClientRect();
-      const caretTop = caretRect.top;
-
-      let node = range.startContainer;
-      let offset = range.startOffset;
-
-      while (node) {
-        if (node.nodeType === Node.TEXT_NODE) {
-          for (let i = offset - 1; i >= 0; i--) {
-            const charRange = document.createRange();
-            charRange.setStart(node, i);
-            charRange.setEnd(node, i + 1);
-
-            const charRect = charRange.getBoundingClientRect();
-            if (charRect.top < caretTop) {
-              // Found the start of the line
-              return { node: node, offset: i + 1 };
-            }
-          }
-        }
-
-        // Move to the previous node
-        let prevNode = node.previousSibling;
-        while (prevNode && prevNode.nodeType !== Node.TEXT_NODE) {
-          prevNode = prevNode.previousSibling;
-        }
-
-        if (prevNode) {
-          node = prevNode;
-          offset = node.textContent!.length;
-        } else {
-          // If there's no previous text node, we're at the start of the container
-          break;
-        }
-      }
-
-      return { node: containerElement, offset: 0 };
     }
 
     function getCaretHorizontalPosition() {
@@ -260,6 +196,14 @@ export default function Dashboard() {
       const sel = window.getSelection();
       sel!.removeAllRanges();
 
+      // If the element has no text, set the cursor at the start
+      if (element.textContent!.length === 0) {
+        range.setStart(element, 0);
+        range.collapse(true);
+        sel!.addRange(range);
+        return;
+      }
+
       // Determine the bottom of the element's bounding box
       const elementRect = element.getBoundingClientRect();
       const elementBottom = elementRect.bottom;
@@ -306,10 +250,9 @@ export default function Dashboard() {
 
     function handleKeyDown(event: KeyboardEvent, index: number) {
       const currentElement = event.target as HTMLElement;
-
       if (event.key === "ArrowDown" && index < notes.length - 1) {
-        const cursorInLastLine = isCursorInLastLine(currentElement);
-        if (cursorInLastLine) {
+        const cursorInLastLine = isCursorInLastLine(currentElement);        
+        if (cursorInLastLine) {          
           event.preventDefault(); // Prevent moving to next line in the same element
 
           const horizontalPos = getCaretHorizontalPosition() as number;
@@ -319,15 +262,22 @@ export default function Dashboard() {
           nextElement.focus();
           setCaretToFirstLineAtPosition(nextElement, horizontalPos);
         }
-      } else if (event.key === "ArrowUp" && index > 0) {
-        const cursorInFirstLine = isCursorInFirstLine(currentElement);
+      } else if (event.key === "ArrowUp" && index >= 0) {
+        const cursorInFirstLine = isCursorInFirstLine(currentElement);        
         if (cursorInFirstLine) {
           event.preventDefault(); // Prevent moving to previous line in the same element
 
           const horizontalPos = getCaretHorizontalPosition() as number;
-          const previousElement = document.getElementById(
-            `note-${index - 1}`,
-          ) as HTMLElement;
+          let previousElement: HTMLElement;
+          if (index === 0) {
+            previousElement = document.getElementById(
+              `note-creator`,
+            ) as HTMLElement;
+          } else {
+            previousElement = document.getElementById(
+              `note-${index - 1}`,
+            ) as HTMLElement;
+          }
           previousElement.focus();
           setCaretToLastLineAtPosition(previousElement, horizontalPos);
         }
@@ -344,6 +294,13 @@ export default function Dashboard() {
       }
     });
 
+    const noteCreator = document.getElementById("note-creator");
+    if (noteCreator) {
+      noteCreator.addEventListener("keydown", (e) => {
+        handleKeyDown(e, -1);
+      });
+    }
+
     // Cleanup function
     return () => {
       // Remove event listeners from all notes
@@ -355,6 +312,12 @@ export default function Dashboard() {
           );
         }
       });
+      const noteCreator = document.getElementById("note-creator");
+      if (noteCreator) {
+        noteCreator.removeEventListener("keydown", (e) => {
+          handleKeyDown(e, -1);
+        });
+      }
     };
   }, [notes]);
 
@@ -440,8 +403,10 @@ export default function Dashboard() {
                   All Notes
                 </Text>
                 <Text
+                  id="note-creator"
                   ref={editableNoteRef}
                   mb={16}
+                  className="text-box"
                   contentEditable
                   onKeyDown={async (e) => {
                     if (e.key == "Enter") {
@@ -473,6 +438,7 @@ export default function Dashboard() {
                       key={index}
                       contentEditable
                       dangerouslySetInnerHTML={{ __html: note }}
+                      className="text-box"
                       onChange={async (e) => {
                         e.preventDefault();
                         const target = e.target as HTMLElement;
