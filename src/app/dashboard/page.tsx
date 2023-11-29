@@ -31,7 +31,7 @@ import {
 } from "@tabler/icons-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import "./dashboard.css";
 
@@ -41,7 +41,14 @@ export default function Dashboard() {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const editableNoteRef = useRef<HTMLDivElement>(null);
-  const [notes, setNotes] = useState<string[]>([]);
+  const [notes, setNotes] = useState<string[]>([]);    
+
+  const caretPositionRef = useRef<number | null>(null);  
+  const notesRef = useRef(notes);
+
+  useEffect(() => {
+    notesRef.current = notes;
+  }, [notes]);
 
   const url = "https://faozpgzgwapvpomsfuig.supabase.co";
   const publicKey =
@@ -86,14 +93,14 @@ export default function Dashboard() {
   useEffect(() => {
     function isCursorInFirstLine(element: HTMLElement) {
       const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) return false;      
+      if (!selection || selection.rangeCount === 0) return false;
 
-      let range = selection.getRangeAt(0);                
+      let range = selection.getRangeAt(0);
 
       const rangeRect = range.getBoundingClientRect();
-      const elementRect = element.getBoundingClientRect();      
+      const elementRect = element.getBoundingClientRect();
 
-      const threshold = 10; // pixels from the top of the element      
+      const threshold = 10; // pixels from the top of the element
       return rangeRect.top - elementRect.top <= threshold;
     }
 
@@ -251,8 +258,8 @@ export default function Dashboard() {
     function handleKeyDown(event: KeyboardEvent, index: number) {
       const currentElement = event.target as HTMLElement;
       if (event.key === "ArrowDown" && index < notes.length - 1) {
-        const cursorInLastLine = isCursorInLastLine(currentElement);        
-        if (cursorInLastLine) {          
+        const cursorInLastLine = isCursorInLastLine(currentElement);
+        if (cursorInLastLine) {
           event.preventDefault(); // Prevent moving to next line in the same element
 
           const horizontalPos = getCaretHorizontalPosition() as number;
@@ -263,7 +270,7 @@ export default function Dashboard() {
           setCaretToFirstLineAtPosition(nextElement, horizontalPos);
         }
       } else if (event.key === "ArrowUp" && index >= 0) {
-        const cursorInFirstLine = isCursorInFirstLine(currentElement);        
+        const cursorInFirstLine = isCursorInFirstLine(currentElement);
         if (cursorInFirstLine) {
           event.preventDefault(); // Prevent moving to previous line in the same element
 
@@ -319,7 +326,48 @@ export default function Dashboard() {
         });
       }
     };
+    
   }, [notes]);
+
+  const debounce = useCallback(
+    <T extends (...args: any[]) => void>(func: T, wait: number) => {
+      let timeout: NodeJS.Timeout | undefined;
+
+      return function executedFunction(...args: any[]) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    },
+    [],
+  );
+
+  const debouncedUpdateNote = useRef(
+    debounce((index, newNoteContent) => {
+      const newNotes = [...notesRef.current];
+      newNotes[index] = newNoteContent;
+
+      setNotes(newNotes);
+    }, 1500),
+  ).current;
+
+  useEffect(() => {
+    if (caretPositionRef.current !== null) {
+      const activeElement = document.activeElement;
+      if (activeElement && (activeElement as HTMLElement).contentEditable === 'true') {
+        const range = document.createRange();
+        const selection = window.getSelection();
+        range.setStart(activeElement.childNodes[0], caretPositionRef.current);
+        range.collapse(true);
+        selection!.removeAllRanges();
+        selection!.addRange(range);
+      }
+    }
+  }, [notes]); // Dependency on notes state to trigger after update
 
   return (
     <AppShell navbar={{ width: 240, breakpoint: "xs" }} padding="md">
@@ -383,7 +431,7 @@ export default function Dashboard() {
       <AppShellMain>
         <Grid>
           <GridCol span={7}>
-            <Container>
+            <Container h={"95vh"}>
               <Input
                 radius={8}
                 placeholder="Search"
@@ -395,7 +443,7 @@ export default function Dashboard() {
                 withBorder
                 px={48}
                 py={36}
-                mah={600}
+                h={"90%"}
                 style={{ overflow: "auto" }}
                 className="custom-scrollbar"
               >
@@ -439,13 +487,18 @@ export default function Dashboard() {
                       contentEditable
                       dangerouslySetInnerHTML={{ __html: note }}
                       className="text-box"
-                      onChange={async (e) => {
-                        e.preventDefault();
-                        const target = e.target as HTMLElement;
-                        setNotes((notes) => {
-                          notes[index] = target.innerText;
-                          return notes;
-                        });
+                      onInput={(e) => {
+                        const selection = window.getSelection();
+                        if (selection!.rangeCount > 0) {
+                          const range = selection!.getRangeAt(0);
+                          const start = range.startOffset;
+                      
+                          // Store the caret position in a ref
+                          caretPositionRef.current = start;
+                        }
+
+                        const noteContent = (e.target as HTMLElement).innerText;
+                        debouncedUpdateNote(index, noteContent);
                       }}
                     />
                   ))}
