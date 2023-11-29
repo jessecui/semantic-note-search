@@ -33,6 +33,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import supabaseClient from "../../supabase/supabaseClient";
 import "./dashboard.css";
 
 export default function Dashboard() {
@@ -41,7 +42,7 @@ export default function Dashboard() {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const editableNoteRef = useRef<HTMLDivElement>(null);
-  const [notes, setNotes] = useState<string[]>([]);
+  const [notes, setNotes] = useState<{ id: any; text: any }[]>([]);
 
   const caretPositionRef = useRef<number | null>(null);
   const notesRef = useRef(notes);
@@ -50,13 +51,7 @@ export default function Dashboard() {
     notesRef.current = notes;
   }, [notes]);
 
-  const url = "https://faozpgzgwapvpomsfuig.supabase.co";
-  const publicKey =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhb3pwZ3pnd2FwdnBvbXNmdWlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDAwOTE1NTQsImV4cCI6MjAxNTY2NzU1NH0.3JTgWckpK194wc3hht_KnWev_Rqe4C8Mdpg9ALM0JKo";
-
   useEffect(() => {
-    const supabaseClient = createClient(url, publicKey);
-
     const fetchSession = async () => {
       const { data, error } = await supabaseClient.auth.getSession();
       if (error) console.log(error);
@@ -73,17 +68,15 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchNotes = async () => {
       if (session?.user.id) {
-        const supabaseClient = createClient(url, publicKey);
         const { data, error } = await supabaseClient
           .from("Notes")
-          .select("text")
+          .select("id, text")
           .eq("user_id", session?.user.id)
           .order("created_at", { ascending: false });
 
         if (error) console.log(error);
         else {
-          const notes = data.map((note) => note.text);
-          setNotes(notes);
+          setNotes(data);
         }
       }
     };
@@ -458,11 +451,18 @@ export default function Dashboard() {
   );
 
   const debouncedUpdateNote = useRef(
-    debounce((index, newNoteContent) => {
+    debounce(async (index, noteId, newNotetText) => {
       const newNotes = [...notesRef.current];
-      newNotes[index] = newNoteContent;
+      newNotes[index] = { id: noteId, text: newNotetText };
 
-      setNotes(newNotes);
+      const { error } = await supabaseClient
+        .from("Notes")
+        .update({ text: newNotetText })
+        .eq("id", noteId);
+
+      if (!error) {
+        setNotes(newNotes);
+      }
     }, 1000),
   ).current;
 
@@ -475,7 +475,7 @@ export default function Dashboard() {
       ) {
         const range = document.createRange();
         const selection = window.getSelection();
-        range.setStart(activeElement.childNodes[0], caretPositionRef.current);
+        range.setStart(activeElement.firstChild!, caretPositionRef.current);
         range.collapse(true);
         selection!.removeAllRanges();
         selection!.addRange(range);
@@ -518,7 +518,6 @@ export default function Dashboard() {
                 c="#5F6D7E"
                 size="sm"
                 onClick={async () => {
-                  const supabaseClient = createClient(url, publicKey);
                   await supabaseClient.auth.signOut();
                   router.push("/");
                 }}
@@ -579,13 +578,17 @@ export default function Dashboard() {
                       if (noteText) {
                         editableNoteRef.current.textContent = "";
 
-                        setNotes((notes) => [noteText || "", ...notes]);
-
-                        const supabase = createClient(url, publicKey);
-                        const { data, error } = await supabase
+                        // TODO: Make notes state update instantaneous upon enter key press
+                        const { data, error } = await supabaseClient
                           .from("Notes")
                           .insert([{ text: noteText }])
                           .select();
+                        if (!error) {
+                          setNotes((notes) => [
+                            { id: data[0].id, text: noteText },
+                            ...notes,
+                          ]);
+                        }
                       }
                     }
                   }}
@@ -599,7 +602,7 @@ export default function Dashboard() {
                       id={`note-${index}`}
                       key={index}
                       contentEditable
-                      dangerouslySetInnerHTML={{ __html: note }}
+                      dangerouslySetInnerHTML={{ __html: note.text }}
                       className="text-box"
                       onInput={(e) => {
                         const selection = window.getSelection();
@@ -612,7 +615,7 @@ export default function Dashboard() {
                         }
 
                         const noteContent = (e.target as HTMLElement).innerText;
-                        debouncedUpdateNote(index, noteContent);
+                        debouncedUpdateNote(index, note.id, noteContent);
                       }}
                     />
                   ))}
