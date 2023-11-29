@@ -7,7 +7,7 @@ import { Outfit } from "next/font/google";
 const outfit = Outfit({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Crux: A Playground for Notes",
+  title: "Crux: The Smart Note Organizer",
   description:
     "Crux is an app designed to organize your ideas in a simple and smart way, helping you create better content faster",
   icons: {
