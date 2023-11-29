@@ -41,9 +41,9 @@ export default function Dashboard() {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const editableNoteRef = useRef<HTMLDivElement>(null);
-  const [notes, setNotes] = useState<string[]>([]);    
+  const [notes, setNotes] = useState<string[]>([]);
 
-  const caretPositionRef = useRef<number | null>(null);  
+  const caretPositionRef = useRef<number | null>(null);
   const notesRef = useRef(notes);
 
   useEffect(() => {
@@ -255,6 +255,60 @@ export default function Dashboard() {
       sel!.addRange(range);
     }
 
+    function isCursorAtEnd(element: HTMLElement) {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return false;
+
+      const range = selection.getRangeAt(0);
+      if (!range.collapsed) return false; // Ensure the range is a single point (caret)
+
+      // Check if the caret is at the end of the element's content
+      return range.endOffset === element.textContent!.length;
+    }
+
+    function isCursorAtStart(element: HTMLElement) {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return false;
+
+      const range = selection.getRangeAt(0);
+      if (!range.collapsed) return false; // Ensure the range is a single point (caret)
+
+      // Check if the caret is at the start of the element's content
+      return range.startOffset === 0;
+    }
+
+    function setCaretToStartPosition(element: HTMLElement) {
+      // Create a range and selection object
+      const range = document.createRange();
+      const sel = window.getSelection();
+      sel!.removeAllRanges();
+
+      // Set the caret to the start of the element
+      range.setStart(element.firstChild!, 0);
+      range.collapse(true);
+      sel!.addRange(range);
+    }
+
+    function setCaretToEndPosition(element: HTMLElement) {
+      // Create a range and selection object
+      const range = document.createRange();
+      const sel = window.getSelection();
+      sel!.removeAllRanges();
+
+      // If the element has no text, set the cursor at the start
+      if (element.textContent!.length === 0) {
+        range.setStart(element, 0);
+        range.collapse(true);
+        sel!.addRange(range);
+        return;
+      }
+
+      // Set the caret to the end of the element
+      range.setStart(element.firstChild!, element.textContent!.length);
+      range.collapse(true);
+      sel!.addRange(range);
+    }
+
     function handleKeyDown(event: KeyboardEvent, index: number) {
       const currentElement = event.target as HTMLElement;
       if (event.key === "ArrowDown" && index < notes.length - 1) {
@@ -288,6 +342,64 @@ export default function Dashboard() {
           previousElement.focus();
           setCaretToLastLineAtPosition(previousElement, horizontalPos);
         }
+      }
+      // Handle Right Arrow Key
+      else if (event.key === "ArrowRight") {
+        const cursorAtEnd = isCursorAtEnd(currentElement);
+        if (cursorAtEnd && index < notes.length - 1) {
+          event.preventDefault(); // Prevent moving to next character in the same element
+
+          const nextElement = document.getElementById(
+            `note-${index + 1}`,
+          ) as HTMLElement;
+          nextElement.focus();
+          setCaretToStartPosition(nextElement);
+        }
+      }
+      // Handle Left Arrow Key
+      else if (event.key === "ArrowLeft") {
+        const cursorAtStart = isCursorAtStart(currentElement);
+        if (cursorAtStart && index >= 0) {
+          event.preventDefault(); // Prevent moving to previous character in the same element
+
+          let previousElement: HTMLElement;
+          if (index === 0) {
+            previousElement = document.getElementById(
+              `note-creator`,
+            ) as HTMLElement;
+          } else {
+            previousElement = document.getElementById(
+              `note-${index - 1}`,
+            ) as HTMLElement;
+          }
+          previousElement.focus();
+          setCaretToEndPosition(previousElement);
+        }
+      }
+
+      if (event.metaKey && event.key === "ArrowRight") {
+        setTimeout(() => {
+          const selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            if (range.collapsed) {
+              // When the range is collapsed, it represents the caret position
+              const caretPosition = range.startOffset;
+
+              // Check if the caret is not at the end
+              if (caretPosition < currentElement.textContent!.length) {
+                range.setStart(currentElement.firstChild!, caretPosition - 1);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+              }
+            }
+          }
+        }, 0);
+      }
+
+      if (event.key === "Enter") {
+        event.preventDefault();
       }
     }
 
@@ -326,7 +438,6 @@ export default function Dashboard() {
         });
       }
     };
-    
   }, [notes]);
 
   const debounce = useCallback(
@@ -352,13 +463,16 @@ export default function Dashboard() {
       newNotes[index] = newNoteContent;
 
       setNotes(newNotes);
-    }, 1500),
+    }, 1000),
   ).current;
 
   useEffect(() => {
     if (caretPositionRef.current !== null) {
       const activeElement = document.activeElement;
-      if (activeElement && (activeElement as HTMLElement).contentEditable === 'true') {
+      if (
+        activeElement &&
+        (activeElement as HTMLElement).contentEditable === "true"
+      ) {
         const range = document.createRange();
         const selection = window.getSelection();
         range.setStart(activeElement.childNodes[0], caretPositionRef.current);
@@ -492,7 +606,7 @@ export default function Dashboard() {
                         if (selection!.rangeCount > 0) {
                           const range = selection!.getRangeAt(0);
                           const start = range.startOffset;
-                      
+
                           // Store the caret position in a ref
                           caretPositionRef.current = start;
                         }
