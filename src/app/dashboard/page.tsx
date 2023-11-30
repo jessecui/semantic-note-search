@@ -592,7 +592,7 @@ export default function Dashboard() {
                       }
                     }
                   }}
-                ></Text>
+                />
                 <Text size="sm" fw={500} c="#5F6D7E" mb={8}>
                   Today
                 </Text>
