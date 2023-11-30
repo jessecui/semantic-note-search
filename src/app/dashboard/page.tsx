@@ -46,6 +46,8 @@ export default function Dashboard() {
 
   const caretPositionRef = useRef<number | null>(null);
   const notesRef = useRef(notes);
+  const eventListenersSetRef = useRef<(boolean | null)[]>([]);
+  const noteCreatorEventListenerSetRef = useRef(false);
 
   useEffect(() => {
     notesRef.current = notes;
@@ -400,17 +402,23 @@ export default function Dashboard() {
       const contentEditableDiv = document.getElementById(`note-${index}`);
 
       if (contentEditableDiv) {
+        contentEditableDiv.removeEventListener("keydown", (e) =>
+          handleKeyDown(e, index),
+        );
         contentEditableDiv.addEventListener("keydown", (e) =>
           handleKeyDown(e, index),
         );
+        eventListenersSetRef.current[index] = true;
       }
     });
 
     const noteCreator = document.getElementById("note-creator");
     if (noteCreator) {
+      noteCreator.removeEventListener("keydown", (e) => handleKeyDown(e, -1));
       noteCreator.addEventListener("keydown", (e) => {
         handleKeyDown(e, -1);
       });
+      noteCreatorEventListenerSetRef.current = true;
     }
 
     // Cleanup function
@@ -475,7 +483,12 @@ export default function Dashboard() {
       ) {
         const range = document.createRange();
         const selection = window.getSelection();
-        range.setStart(activeElement.firstChild!, caretPositionRef.current);
+        if (!activeElement.firstChild) {
+          range.setStart(activeElement, 0);
+        } else {
+          range.setStart(activeElement.firstChild, caretPositionRef.current);
+        }
+
         range.collapse(true);
         selection!.removeAllRanges();
         selection!.addRange(range);
