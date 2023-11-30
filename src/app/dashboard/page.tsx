@@ -21,7 +21,7 @@ import {
   Text,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
-import { Session, createClient } from "@supabase/supabase-js";
+import { Session } from "@supabase/supabase-js";
 import {
   IconArrowBadgeRightFilled,
   IconCalendar,
@@ -131,6 +131,11 @@ export default function Dashboard() {
       // Ensure the element is a paragraph and contentEditable
       if (element.tagName !== "P" || !element.isContentEditable) {
         console.error("Element is not a contentEditable <p> tag.");
+        return;
+      }
+
+      if (element.textContent!.length === 0) {
+        element.focus();
         return;
       }
 
@@ -304,7 +309,7 @@ export default function Dashboard() {
       sel!.addRange(range);
     }
 
-    function handleKeyDown(event: KeyboardEvent, index: number) {
+    async function handleKeyDown(event: KeyboardEvent, index: number) {
       const currentElement = event.target as HTMLElement;
       if (event.key === "ArrowDown" && index < notes.length - 1) {
         const cursorInLastLine = isCursorInLastLine(currentElement);
@@ -396,6 +401,38 @@ export default function Dashboard() {
       if (event.key === "Enter") {
         event.preventDefault();
       }
+
+      if (event.key === "Backspace") {
+        if (currentElement.textContent!.length === 0) {
+          event.preventDefault();
+
+          if (index >= 0) {
+            let previousElement: HTMLElement;
+            if (index === 0) {
+              previousElement = document.getElementById(
+                `note-creator`,
+              ) as HTMLElement;
+            } else {
+              previousElement = document.getElementById(
+                `note-${index - 1}`,
+              ) as HTMLElement;
+            }
+            previousElement.focus();
+            caretPositionRef.current = previousElement.textContent!.length;
+
+            // Delete note from notes state
+            const newNotes = [...notes];
+            newNotes.splice(index, 1);
+            setNotes(newNotes);
+
+            // Delete from supabase
+            await supabaseClient
+              .from("Notes")
+              .delete()
+              .eq("id", notes[index].id);
+          }
+        }
+      }
     }
 
     notes.forEach((_, index) => {
@@ -459,21 +496,29 @@ export default function Dashboard() {
   );
 
   const debouncedUpdateNote = useRef(
-    debounce(async (index, noteId, newNotetText) => {
+    debounce(async (index, noteId, newNoteText) => {
       const newNotes = [...notesRef.current];
-      newNotes[index] = { id: noteId, text: newNotetText };
+      newNotes[index] = { id: noteId, text: newNoteText };
 
-      const { error } = await supabaseClient
+      const { data } = await supabaseClient
         .from("Notes")
-        .update({ text: newNotetText })
+        .select("id")
         .eq("id", noteId);
 
-      if (!error) {
-        setNotes(newNotes);
+      if (data && data.length) {
+        const { error } = await supabaseClient
+          .from("Notes")
+          .update({ text: newNoteText })
+          .eq("id", noteId);
+
+        if (!error) {
+          setNotes(newNotes);
+        }
       }
     }, 1000),
   ).current;
 
+  // Update caret position after note state gets changed on debounce
   useEffect(() => {
     if (caretPositionRef.current !== null) {
       const activeElement = document.activeElement;
@@ -606,9 +651,6 @@ export default function Dashboard() {
                     }
                   }}
                 />
-                <Text size="sm" fw={500} c="#5F6D7E" mb={8}>
-                  Today
-                </Text>
                 <Stack>
                   {notes.map((note, index) => (
                     <Text
