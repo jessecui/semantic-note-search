@@ -12,13 +12,13 @@ import {
   Grid,
   GridCol,
   Group,
-  Input,
   InputLabel,
   NavLink,
   Paper,
   Select,
   Stack,
   Text,
+  Textarea,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { Session } from "@supabase/supabase-js";
@@ -43,6 +43,8 @@ export default function Dashboard() {
   const [endDate, setEndDate] = useState<Date | null>(null);
   const editableNoteRef = useRef<HTMLDivElement>(null);
   const [notes, setNotes] = useState<{ id: any; text: any }[]>([]);
+
+  const [searchedText, setSearchedText] = useState<string | null>(null);
 
   const caretPositionRef = useRef<number | null>(null);
   const notesRef = useRef(notes);
@@ -339,8 +341,13 @@ export default function Dashboard() {
               `note-${index - 1}`,
             ) as HTMLElement;
           }
-          previousElement.focus();
-          setCaretToLastLineAtPosition(previousElement, horizontalPos);
+
+          if (previousElement) {
+            previousElement.focus();
+            setCaretToLastLineAtPosition(previousElement, horizontalPos);
+          } else {
+            setCaretToStartPosition(currentElement);
+          }
         }
       }
       // Handle Right Arrow Key
@@ -372,8 +379,10 @@ export default function Dashboard() {
               `note-${index - 1}`,
             ) as HTMLElement;
           }
-          previousElement.focus();
-          setCaretToEndPosition(previousElement);
+          if (previousElement) {
+            previousElement.focus();
+            setCaretToEndPosition(previousElement);
+          }
         }
       }
 
@@ -417,8 +426,10 @@ export default function Dashboard() {
                 `note-${index - 1}`,
               ) as HTMLElement;
             }
-            previousElement.focus();
-            caretPositionRef.current = previousElement.textContent!.length;
+            if (previousElement) {
+              previousElement.focus();
+              caretPositionRef.current = previousElement.textContent!.length;
+            }
 
             // Delete note from notes state
             const newNotes = [...notes];
@@ -476,7 +487,7 @@ export default function Dashboard() {
         });
       }
     };
-  }, [notes]);
+  }, [notes, searchedText]);
 
   const debounce = useCallback(
     <T extends (...args: any[]) => void>(func: T, wait: number) => {
@@ -506,8 +517,10 @@ export default function Dashboard() {
         .eq("id", noteId);
 
       if (data && data.length) {
-        const embeddingResponse = await fetch(`/embed?text=${encodeURIComponent(newNoteText)}`);
-                        const embedding = await embeddingResponse.json();
+        const embeddingResponse = await fetch(
+          `/embed?text=${encodeURIComponent(newNoteText)}`,
+        );
+        const embedding = await embeddingResponse.json();
 
         const { error } = await supabaseClient
           .from("Notes")
@@ -606,11 +619,43 @@ export default function Dashboard() {
         <Grid>
           <GridCol span={7}>
             <Container h={"95vh"}>
-              <Input
+              <Textarea
+                rows={1}
+                autosize
                 radius={8}
-                placeholder="Search"
-                leftSection={<IconSearch size={16} />}
+                placeholder="Smart Search"
+                leftSection={
+                  <IconSearch
+                    style={{ alignSelf: "start", marginTop: 8.5 }}
+                    size={16}
+                  />
+                }
                 mb={32}
+                onKeyDown={async (e) => {
+                  if (e.key == "Enter") {
+                    e.preventDefault();
+                    const textToSearch = (e.target as HTMLInputElement).value;
+
+                    const embeddingResponse = await fetch(
+                      `/embed?text=${encodeURIComponent(textToSearch)}`,
+                    );
+                    const embedding = await embeddingResponse.json();
+
+                    const { data, error } = await supabaseClient.rpc(
+                      "match_notes",
+                      {
+                        query_embedding: embedding,
+                        match_threshold: 1.8,
+                        match_count: 20,
+                      },
+                    );
+
+                    setNotes(data);
+
+                    (e.target as HTMLInputElement).value = "";
+                    setSearchedText(textToSearch);
+                  }
+                }}
               />
               <Paper
                 radius={8}
@@ -621,42 +666,61 @@ export default function Dashboard() {
                 style={{ overflow: "auto" }}
                 className="custom-scrollbar"
               >
-                <Text size="lg" fw={500} mb={8}>
-                  All Notes
-                </Text>
-                <Text
-                  id="note-creator"
-                  ref={editableNoteRef}
-                  mb={16}
-                  className="text-box"
-                  contentEditable
-                  onKeyDown={async (e) => {
-                    if (e.key == "Enter") {
-                      e.preventDefault();
+                {searchedText ? (
+                  <Box>
+                    <Text mb={4} fw={500}>
+                      Searched Text:
+                    </Text>
+                    <Text>{searchedText}</Text>
+                    <Divider my={24} />
+                  </Box>
+                ) : (
+                  <Text size="lg" fw={500} mb={8}>
+                    All Notes
+                  </Text>
+                )}
+                {!searchedText && (
+                  <Text
+                    id="note-creator"
+                    ref={editableNoteRef}
+                    mb={16}
+                    className="text-box"
+                    contentEditable
+                    onKeyDown={async (e) => {
+                      if (e.key == "Enter") {
+                        e.preventDefault();
 
-                      const noteText = editableNoteRef.current?.textContent;
+                        const noteText = editableNoteRef.current?.textContent;
 
-                      if (noteText) {
-                        editableNoteRef.current.textContent = "";
+                        if (noteText) {
+                          editableNoteRef.current.textContent = "";
 
-                        // TODO: Make notes state update instantaneous upon enter key press                        
-                        const embeddingResponse = await fetch(`/embed?text=${encodeURIComponent(noteText)}`);
-                        const embedding = await embeddingResponse.json();
+                          // TODO: Make notes state update instantaneous upon enter key press
+                          const embeddingResponse = await fetch(
+                            `/embed?text=${encodeURIComponent(noteText)}`,
+                          );
+                          const embedding = await embeddingResponse.json();
 
-                        const { data, error } = await supabaseClient
-                          .from("Notes")
-                          .insert([{ text: noteText, embedding }])
-                          .select();
-                        if (!error) {
-                          setNotes((notes) => [
-                            { id: data[0].id, text: noteText, },
-                            ...notes,
-                          ]);
+                          const { data, error } = await supabaseClient
+                            .from("Notes")
+                            .insert([{ text: noteText, embedding }])
+                            .select();
+                          if (!error) {
+                            setNotes((notes) => [
+                              { id: data[0].id, text: noteText },
+                              ...notes,
+                            ]);
+                          }
                         }
                       }
-                    }
-                  }}
-                />
+                    }}
+                  />
+                )}
+                {searchedText && (
+                  <Text mb={4} fw={500}>
+                    Related Notes:
+                  </Text>
+                )}
                 <Stack>
                   {notes.map((note, index) => (
                     <Text
@@ -688,7 +752,13 @@ export default function Dashboard() {
             <Container>
               <Stack gap={32}>
                 <Group>
-                  <Button>Create a Note</Button>
+                  <Button
+                    onClick={() => {
+                      setSearchedText(null);
+                    }}
+                  >
+                    See All Notes
+                  </Button>
                   <Button color="#506EDC">Create a Note Space</Button>
                 </Group>
                 <Paper radius={8} withBorder px={48} py={32}>
