@@ -506,9 +506,12 @@ export default function Dashboard() {
         .eq("id", noteId);
 
       if (data && data.length) {
+        const embeddingResponse = await fetch(`/embed?text=${encodeURIComponent(newNoteText)}`);
+                        const embedding = await embeddingResponse.json();
+
         const { error } = await supabaseClient
           .from("Notes")
-          .update({ text: newNoteText })
+          .update({ text: newNoteText, embedding })
           .eq("id", noteId);
 
         if (!error) {
@@ -636,14 +639,17 @@ export default function Dashboard() {
                       if (noteText) {
                         editableNoteRef.current.textContent = "";
 
-                        // TODO: Make notes state update instantaneous upon enter key press
+                        // TODO: Make notes state update instantaneous upon enter key press                        
+                        const embeddingResponse = await fetch(`/embed?text=${encodeURIComponent(noteText)}`);
+                        const embedding = await embeddingResponse.json();
+
                         const { data, error } = await supabaseClient
                           .from("Notes")
-                          .insert([{ text: noteText }])
+                          .insert([{ text: noteText, embedding }])
                           .select();
                         if (!error) {
                           setNotes((notes) => [
-                            { id: data[0].id, text: noteText },
+                            { id: data[0].id, text: noteText, },
                             ...notes,
                           ]);
                         }
