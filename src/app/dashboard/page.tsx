@@ -88,6 +88,39 @@ export default function Dashboard() {
   }, [session]);
 
   useEffect(() => {
+    if (startDate || endDate) {
+      const fetchNotes = async () => {
+        if (session?.user.id) {
+          let query = supabaseClient
+            .from("Notes")
+            .select("id, text")
+            .eq("user_id", session?.user.id);
+
+          if (startDate) {
+            const formattedStartDate = startDate.toISOString();
+            query = query.gte("created_at", formattedStartDate);
+          }
+
+          if (endDate) {
+            const formattedEndDate = endDate.toISOString();
+            query = query.lte("created_at", formattedEndDate);
+          }
+
+          query = query.order("created_at", { ascending: false });
+
+          const { data, error } = await query;
+
+          if (error) console.log(error);
+          else {
+            setNotes(data);
+          }
+        }
+      };
+      fetchNotes();
+    }
+  }, [startDate, endDate, session]);
+
+  useEffect(() => {
     function isCursorInFirstLine(element: HTMLElement) {
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0) return false;
