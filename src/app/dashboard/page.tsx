@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ActionIcon,
   AppShell,
   AppShellMain,
   AppShellNavbar,
@@ -13,6 +14,9 @@ import {
   GridCol,
   Group,
   InputLabel,
+  Menu,
+  MenuDropdown,
+  MenuTarget,
   NavLink,
   Paper,
   Select,
@@ -25,9 +29,16 @@ import { Session } from "@supabase/supabase-js";
 import {
   IconArrowBadgeRightFilled,
   IconCalendar,
+  IconClipboardText,
+  IconDots,
+  IconEdit,
   IconLogout,
+  IconPlaylistX,
   IconSearch,
-  IconStarFilled,
+  IconStack2,
+  IconTextPlus,
+  IconTrash,
+  IconViewfinder,
 } from "@tabler/icons-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -44,12 +55,33 @@ export default function Dashboard() {
   const editableNoteRef = useRef<HTMLDivElement>(null);
   const [notes, setNotes] = useState<{ id: any; text: any }[]>([]);
 
+  const [noteSpaceNotes, setNoteSpaceNotes] = useState<
+    { id: any; text: any }[]
+  >([]);
+
   const [searchedText, setSearchedText] = useState<string | null>(null);
+
+  const [noteSpaces, setNoteSpaces] = useState<{ id: any; name: string }[]>([]);
+
+  const [activeNoteSpace, setActiveNoteSpace] = useState<{
+    id: any;
+    name: string;
+  } | null>(null);
+
+  const [activeSideNoteSpace, setActiveSideNoteSpace] = useState<{
+    id: any;
+    name: string;
+  } | null>(null);
 
   const caretPositionRef = useRef<number | null>(null);
   const notesRef = useRef(notes);
   const eventListenersSetRef = useRef<(boolean | null)[]>([]);
   const noteCreatorEventListenerSetRef = useRef(false);
+
+  const [noteMode, setNoteMode] = useState<"view" | "edit">("edit");
+  const [hoveredNoteSpaceId, setHoveredNoteSpaceId] = useState<Number | null>(
+    null,
+  );
 
   useEffect(() => {
     notesRef.current = notes;
@@ -85,7 +117,82 @@ export default function Dashboard() {
       }
     };
     fetchNotes();
+
+    const fetchNoteSpaces = async () => {
+      if (session?.user.id) {
+        const { data, error } = await supabaseClient
+          .from("Notespaces")
+          .select("id, name")
+          .eq("user_id", session?.user.id)
+          .order("created_at", { ascending: false });
+
+        if (error) console.log(error);
+        else {
+          setNoteSpaces(data);
+        }
+      }
+    };
+    fetchNoteSpaces();
   }, [session]);
+
+  useEffect(() => {
+    const fetchNoteSpaceNotes = async () => {
+      if (activeSideNoteSpace?.id && session?.user.id) {
+        const { data, error } = await supabaseClient
+          .from("Note to Notespace")
+          .select("id, Notes (id, text)")
+          .eq("user_id", session?.user.id)
+          .eq("notespace_id", activeSideNoteSpace.id)
+          .order("created_at", { ascending: false });
+
+        if (error) console.log(error);
+        else {
+          const notes: { id: any; text: any }[] = data.flatMap((note) => {
+            return note.Notes;
+          });
+          setNoteSpaceNotes(notes);
+        }
+      } else {
+        setNoteSpaceNotes([]);
+      }
+    };
+    fetchNoteSpaceNotes();
+  }, [activeSideNoteSpace, session]);
+
+  useEffect(() => {
+    const fetchNoteSpaceNotes = async () => {
+      if (activeNoteSpace?.id && session?.user.id) {
+        const { data, error } = await supabaseClient
+          .from("Note to Notespace")
+          .select("id, Notes (id, text)")
+          .eq("user_id", session?.user.id)
+          .eq("notespace_id", activeNoteSpace.id)
+          .order("created_at", { ascending: false });
+
+        if (error) console.log(error);
+        else {
+          const notes: { id: any; text: any }[] = data.flatMap((note) => {
+            return note.Notes;
+          });
+          setNotes(notes);
+        }
+      } else {
+        if (session?.user.id) {
+          const { data, error } = await supabaseClient
+            .from("Notes")
+            .select("id, text")
+            .eq("user_id", session?.user.id)
+            .order("created_at", { ascending: false });
+
+          if (error) console.log(error);
+          else {
+            setNotes(data);
+          }
+        }
+      }
+    };
+    fetchNoteSpaceNotes();
+  }, [activeNoteSpace, session]);
 
   useEffect(() => {
     if (startDate || endDate) {
@@ -116,9 +223,46 @@ export default function Dashboard() {
           }
         }
       };
-      fetchNotes();
+
+      const fetchNotesWithinNoteSpace = async () => {
+        if (activeNoteSpace?.id && session?.user.id) {
+          let query = supabaseClient
+            .from("Note to Notespace")
+            .select("id, Notes (id, text)")
+            .eq("user_id", session?.user.id)
+            .eq("notespace_id", activeNoteSpace.id);
+
+          if (startDate) {
+            const formattedStartDate = startDate.toISOString();
+            query = query.gte("created_at", formattedStartDate);
+          }
+
+          if (endDate) {
+            const formattedEndDate = endDate.toISOString();
+            query = query.lte("created_at", formattedEndDate);
+          }
+
+          query = query.order("created_at", { ascending: false });
+
+          const { data, error } = await query;
+
+          if (error) console.log(error);
+          else {
+            const notes: { id: any; text: any }[] = data.flatMap((note) => {
+              return note.Notes;
+            });
+            setNotes(notes);
+          }
+        }
+      };
+
+      if (activeNoteSpace) {
+        fetchNotesWithinNoteSpace();
+      } else {
+        fetchNotes();
+      }
     }
-  }, [startDate, endDate, session]);
+  }, [startDate, endDate, session, activeNoteSpace]);
 
   useEffect(() => {
     function isCursorInFirstLine(element: HTMLElement) {
@@ -638,14 +782,114 @@ export default function Dashboard() {
           <Text size="lg" fw="500" mb={8}>
             Note Spaces
           </Text>
-          <Text
-            c="#5F6D7E"
-            fw={600}
-            style={{ display: "flex", alignItems: "center", gap: 8 }}
-          >
-            <IconStarFilled size={12} />
-            All Notes
-          </Text>
+          <Stack gap={4}>
+            <Text
+              c={activeNoteSpace == null ? "#282E36" : "#5F6D7E"}
+              fw={600}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                cursor: "pointer",
+              }}
+              onClick={async () => {
+                setActiveNoteSpace(null);
+                setSearchedText(null);
+                setStartDate(null);
+                setEndDate(null);
+                if (session?.user.id) {
+                  const { data, error } = await supabaseClient
+                    .from("Notes")
+                    .select("id, text")
+                    .eq("user_id", session?.user.id)
+                    .order("created_at", { ascending: false });
+
+                  if (error) console.log(error);
+                  else {
+                    setNotes(data);
+                  }
+                }
+              }}
+            >
+              <IconStack2 size={16} />
+              All Notes
+            </Text>
+            {noteSpaces.map((notespace) => (
+              <Flex
+                key={notespace.id}
+                justify="space-between"
+                align="center"
+                h="25px"
+                onMouseEnter={() => setHoveredNoteSpaceId(notespace.id)}
+                onMouseLeave={() => setHoveredNoteSpaceId(null)}
+              >
+                <Text
+                  c={
+                    notespace.id == activeNoteSpace?.id ? "#282E36" : "#5F6D7E"
+                  }
+                  fw={600}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    cursor: "pointer",
+                  }}
+                  onClick={() => {
+                    setActiveNoteSpace(notespace);
+                    setSearchedText(null);
+                    setStartDate(null);
+                    setEndDate(null);
+                  }}
+                >
+                  <IconClipboardText size={16} />
+                  {notespace.name}
+                </Text>
+                {hoveredNoteSpaceId === notespace.id && (
+                  <Menu offset={0} position="bottom-start">
+                    <MenuTarget>
+                      <ActionIcon
+                        variant="subtle"
+                        aria-label="Settings"
+                        color="gray"
+                        size="md"
+                      >
+                        <IconDots
+                          style={{ width: "70%", height: "70%" }}
+                          stroke={1.5}
+                        />
+                      </ActionIcon>
+                    </MenuTarget>
+                    <MenuDropdown bg="#F9FBFD">
+                      <Menu.Item
+                        leftSection={
+                          <IconTrash style={{ width: 16, height: 16 }} />
+                        }
+                        onClick={async () => {
+                          const { error } = await supabaseClient
+                            .from("Notespaces")
+                            .delete()
+                            .eq("id", notespace.id);
+
+                          if (!error) {
+                            if (activeNoteSpace?.id == notespace.id) {
+                              setActiveNoteSpace(null);
+                            }
+                            setNoteSpaces(
+                              noteSpaces.filter(
+                                (notespace2) => notespace2.id !== notespace.id,
+                              ),
+                            );
+                          }
+                        }}
+                      >
+                        Delete
+                      </Menu.Item>
+                    </MenuDropdown>
+                  </Menu>
+                )}
+              </Flex>
+            ))}
+          </Stack>
         </Box>
       </AppShellNavbar>
       <AppShellMain>
@@ -656,7 +900,7 @@ export default function Dashboard() {
                 rows={1}
                 autosize
                 radius={8}
-                placeholder="Smart Search"
+                placeholder="Semantic Search"
                 leftSection={
                   <IconSearch
                     style={{ alignSelf: "start", marginTop: 8.5 }}
@@ -667,6 +911,7 @@ export default function Dashboard() {
                 onKeyDown={async (e) => {
                   if (e.key == "Enter") {
                     e.preventDefault();
+                    setActiveNoteSpace(null);
                     const textToSearch = (e.target as HTMLInputElement).value;
 
                     const embeddingResponse = await fetch(
@@ -678,7 +923,7 @@ export default function Dashboard() {
                       "match_notes",
                       {
                         query_embedding: embedding,
-                        match_threshold: 1.8,
+                        match_threshold: 1.81,
                         match_count: 20,
                       },
                     );
@@ -708,16 +953,73 @@ export default function Dashboard() {
                     <Divider my={24} />
                   </Box>
                 ) : (
-                  <Text size="lg" fw={500} mb={8}>
-                    All Notes
-                  </Text>
+                  <Text
+                    id="notespace-title"
+                    size="lg"
+                    fw={500}
+                    mb={16}
+                    contentEditable={
+                      noteMode === "edit" && activeNoteSpace != null
+                    }
+                    dangerouslySetInnerHTML={{
+                      __html: activeNoteSpace
+                        ? activeNoteSpace.name
+                        : "All Notes",
+                    }}
+                    className="text-box-edit"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        editableNoteRef.current?.focus();
+                      }
+                    }}
+                    onBlur={async (e) => {
+                      const noteSpaceName = (e.target as HTMLElement).innerText;
+
+                      const { data } = await supabaseClient
+                        .from("Notespaces")
+                        .select("id")
+                        .eq("user_id", session?.user.id)
+                        .eq("name", noteSpaceName);
+
+                      if (data && data.length) {
+                        (e.target as HTMLElement).innerText =
+                          activeNoteSpace?.name as string;
+                        return;
+                      }
+
+                      const { error } = await supabaseClient
+                        .from("Notespaces")
+                        .update({ name: noteSpaceName })
+                        .eq("id", activeNoteSpace?.id);
+
+                      if (!error) {
+                        setActiveNoteSpace({
+                          id: activeNoteSpace?.id,
+                          name: noteSpaceName,
+                        });
+                        setNoteSpaces(
+                          noteSpaces.map((notespace) => {
+                            if (notespace.id === activeNoteSpace?.id) {
+                              return {
+                                id: activeNoteSpace?.id,
+                                name: noteSpaceName,
+                              };
+                            } else {
+                              return notespace;
+                            }
+                          }),
+                        );
+                      }
+                    }}
+                  />
                 )}
-                {!searchedText && (
+                {!searchedText && !(noteMode === "view") && (
                   <Text
                     id="note-creator"
                     ref={editableNoteRef}
                     mb={16}
-                    className="text-box"
+                    className="text-box-edit"
                     contentEditable
                     onKeyDown={async (e) => {
                       if (e.key == "Enter") {
@@ -738,11 +1040,23 @@ export default function Dashboard() {
                             .from("Notes")
                             .insert([{ text: noteText, embedding }])
                             .select();
+
                           if (!error) {
-                            setNotes((notes) => [
-                              { id: data[0].id, text: noteText },
-                              ...notes,
-                            ]);
+                            const { data: data2, error: error2 } =
+                              await supabaseClient
+                                .from("Note to Notespace")
+                                .insert([
+                                  {
+                                    notespace_id: activeNoteSpace?.id,
+                                    note_id: data[0].id,
+                                  },
+                                ]);
+                            if (!error2) {
+                              setNotes((notes) => [
+                                { id: data[0].id, text: noteText },
+                                ...notes,
+                              ]);
+                            }
                           }
                         }
                       }
@@ -755,28 +1069,132 @@ export default function Dashboard() {
                   </Text>
                 )}
                 <Stack>
-                  {notes.map((note, index) => (
-                    <Text
-                      id={`note-${index}`}
-                      key={index}
-                      contentEditable
-                      dangerouslySetInnerHTML={{ __html: note.text }}
-                      className="text-box"
-                      onInput={(e) => {
-                        const selection = window.getSelection();
-                        if (selection!.rangeCount > 0) {
-                          const range = selection!.getRangeAt(0);
-                          const start = range.startOffset;
-
-                          // Store the caret position in a ref
-                          caretPositionRef.current = start;
+                  {notes.map((note, index) => {
+                    const textComponent = (
+                      <Text
+                        id={`note-${index}`}
+                        contentEditable={noteMode === "edit"}
+                        dangerouslySetInnerHTML={{ __html: note.text }}
+                        className={
+                          noteMode === "edit"
+                            ? "text-box-edit"
+                            : "text-box-view"
                         }
+                        style={{
+                          cursor: noteMode === "view" ? "pointer" : "text",
+                        }}
+                        onInput={(e) => {
+                          const selection = window.getSelection();
+                          if (selection!.rangeCount > 0) {
+                            const range = selection!.getRangeAt(0);
+                            const start = range.startOffset;
 
-                        const noteContent = (e.target as HTMLElement).innerText;
-                        debouncedUpdateNote(index, note.id, noteContent);
-                      }}
-                    />
-                  ))}
+                            // Store the caret position in a ref
+                            caretPositionRef.current = start;
+                          }
+
+                          const noteContent = (e.target as HTMLElement)
+                            .innerText;
+                          debouncedUpdateNote(index, note.id, noteContent);
+                        }}
+                      />
+                    );
+                    return noteMode === "view" ? (
+                      <Menu offset={0} position="right" key={index}>
+                        <MenuTarget>{textComponent}</MenuTarget>
+                        <MenuDropdown bg="#F9FBFD">
+                          {activeNoteSpace && (
+                            <Menu.Item
+                              leftSection={
+                                <IconPlaylistX
+                                  style={{ width: 16, height: 16 }}
+                                />
+                              }
+                              onClick={async () => {
+                                const { error } = await supabaseClient
+                                  .from("Note to Notespace")
+                                  .delete()
+                                  .eq("notespace_id", activeNoteSpace?.id)
+                                  .eq("note_id", note.id);
+
+                                if (!error) {
+                                  setNotes(
+                                    notes.filter(
+                                      (note2) => note2.id !== note.id,
+                                    ),
+                                  );
+                                }
+                              }}
+                            >
+                              Delete from {activeNoteSpace?.name}
+                            </Menu.Item>
+                          )}
+                          {activeSideNoteSpace?.name && (
+                            <Menu.Item
+                              leftSection={
+                                <IconTextPlus
+                                  style={{ width: 16, height: 16 }}
+                                />
+                              }
+                              onClick={async () => {
+                                const {
+                                  data: existingData,
+                                  error: existingError,
+                                } = await supabaseClient
+                                  .from("Note to Notespace")
+                                  .select("id")
+                                  .eq("notespace_id", activeSideNoteSpace?.id)
+                                  .eq("note_id", note.id);
+
+                                if (!existingData?.length) {
+                                  const { data, error } = await supabaseClient
+                                    .from("Note to Notespace")
+                                    .insert([
+                                      {
+                                        notespace_id: activeSideNoteSpace?.id,
+                                        note_id: note.id,
+                                      },
+                                    ]);
+
+                                  if (!error) {
+                                    setNoteSpaceNotes([
+                                      { id: note.id, text: note.text },
+                                      ...noteSpaceNotes,
+                                    ]);
+                                  } else {
+                                    console.log(error);
+                                  }
+                                }
+                              }}
+                            >
+                              Add to {activeSideNoteSpace?.name}
+                            </Menu.Item>
+                          )}
+                          <Menu.Item
+                            leftSection={
+                              <IconTrash style={{ width: 16, height: 16 }} />
+                            }
+                            onClick={async () => {
+                              const { error } = await supabaseClient
+                                .from("Notes")
+                                .delete()
+                                .eq("id", note.id);
+
+                              if (!error) {
+                                setNotes(
+                                  notes.filter((note2) => note2.id !== note.id),
+                                );
+                              }
+                            }}
+                          >
+                            Delete Note
+                          </Menu.Item>
+                        </MenuDropdown>
+                      </Menu>
+                    ) : (
+                      <Box key={index}>{textComponent}</Box>
+                    );
+                  })}
                 </Stack>
               </Paper>
             </Container>
@@ -786,13 +1204,72 @@ export default function Dashboard() {
               <Stack gap={32}>
                 <Group>
                   <Button
+                    variant="filled"
+                    aria-label="Settings"
+                    leftSection={
+                      noteMode === "view" ? (
+                        <IconViewfinder
+                          style={{ width: "70%", height: "70%" }}
+                          stroke={1.5}
+                        />
+                      ) : (
+                        <IconEdit
+                          style={{ width: "70%", height: "70%" }}
+                          stroke={1.5}
+                        />
+                      )
+                    }
                     onClick={() => {
-                      setSearchedText(null);
+                      if (noteMode === "view") {
+                        setNoteMode("edit");
+                      } else {
+                        setNoteMode("view");
+                      }
                     }}
                   >
-                    See All Notes
+                    Toggle Note Mode
                   </Button>
-                  <Button color="#506EDC">Create a Note Space</Button>
+                  <Button
+                    color="#506EDC"
+                    onClick={async () => {
+                      let newNoteSpaceName = "Note Space ";
+                      for (
+                        let i = noteSpaces.length;
+                        i < noteSpaces.length * 2;
+                        i++
+                      ) {
+                        if (
+                          noteSpaces.find(
+                            (noteSpace) =>
+                              noteSpace.name === `${newNoteSpaceName}${i}`,
+                          ) === undefined
+                        ) {
+                          newNoteSpaceName = `${newNoteSpaceName}${i}`;
+                          break;
+                        }
+                      }
+
+                      const { data, error } = await supabaseClient
+                        .from("Notespaces")
+                        .insert([{ name: newNoteSpaceName }])
+                        .select();
+
+                      if (!error) {
+                        setActiveSideNoteSpace({
+                          id: data[0].id,
+                          name: data[0].name,
+                        });
+                        setNoteSpaces([
+                          { id: 1, name: newNoteSpaceName },
+                          ...noteSpaces,
+                        ]);
+                      } else {
+                        console.log(error);
+                      }
+                    }}
+                  >
+                    Create a Note Space
+                  </Button>
                 </Group>
                 <Paper radius={8} withBorder px={48} py={32}>
                   <InputLabel c="#5F6D7E" fw="700" mb={12}>
@@ -818,11 +1295,57 @@ export default function Dashboard() {
                     />
                   </Flex>
                 </Paper>
-                <Select
-                  placeholder="View a Note Space"
-                  data={["All Notes"]}
-                  clearable
-                />
+                <Paper
+                  radius={8}
+                  withBorder
+                  px={48}
+                  py={32}
+                  mah="63vh"
+                  style={{ overflow: "auto" }}
+                  className="custom-scrollbar"
+                >
+                  {activeNoteSpace == null ? (
+                    <Box>
+                      <Select
+                        placeholder="View a Note Space"
+                        data={noteSpaces.map((notespace) => notespace.name)}
+                        value={activeSideNoteSpace?.name}
+                        variant="unstyled"
+                        className="input-with-styled-placeholder"
+                        onChange={(value) => {
+                          setActiveSideNoteSpace({
+                            name: value as string,
+                            id: noteSpaces.find(
+                              (notespace) => notespace.name === value,
+                            )?.id,
+                          });
+                        }}
+                        styles={{
+                          wrapper: {
+                            fontWeight: 700,
+                          },
+                          input: {
+                            color: "#5F6D7E",
+                          },
+                        }}
+                        clearable
+                      />
+                      {activeSideNoteSpace?.id && (
+                        <Stack mt={8}>
+                          {noteSpaceNotes.map((note, index) => (
+                            <Text key={index}>{note.text}</Text>
+                          ))}
+                        </Stack>
+                      )}
+                    </Box>
+                  ) : (
+                    <Box>
+                      <Text fw={700} mb={16} c="#5F6D7E" size="sm">
+                        Recommended Notes to Add
+                      </Text>
+                    </Box>
+                  )}
+                </Paper>
               </Stack>
             </Container>
           </GridCol>

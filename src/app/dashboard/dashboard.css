@@ -9,6 +9,14 @@
   box-shadow: 0 1px rgba(255, 255, 255, 0.5);
 }
 
-.text-box:focus {
+.text-box-edit:focus {
   outline: none;
+}
+
+.text-box-view:hover {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.input-with-styled-placeholder input::placeholder {
+  color: #5F6D7E;
 }
