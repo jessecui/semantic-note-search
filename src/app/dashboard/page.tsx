@@ -7,14 +7,12 @@ import {
   AppShellMain,
   AppShellNavbar,
   Box,
-  Button,
   Container,
   Divider,
   Flex,
   Grid,
   GridCol,
   Group,
-  InputLabel,
   Menu,
   MenuDropdown,
   MenuItem,
@@ -110,10 +108,12 @@ export default function Dashboard() {
     [key: string]: (e: KeyboardEvent) => void;
   }>({});
 
+  // Update notes ref every time notes changes
   useEffect(() => {
     notesRef.current = notes;
   }, [notes]);
 
+  // Set session after fetching the router data
   useEffect(() => {
     const fetchSession = async () => {
       const { data, error } = await supabaseClient.auth.getSession();
@@ -128,6 +128,7 @@ export default function Dashboard() {
     editableNoteRef.current?.focus();
   }, [router]);
 
+  // Fetch initial notes and note spaces
   useEffect(() => {
     const fetchNotes = async () => {
       if (session?.user.id) {
@@ -163,6 +164,7 @@ export default function Dashboard() {
     fetchNoteSpaces();
   }, [session]);
 
+  // Fetch side navigator notes when searching note spaces
   useEffect(() => {
     const fetchNoteSpaceNotes = async () => {
       if (activeSideNoteSpace?.id && session?.user.id) {
@@ -187,53 +189,11 @@ export default function Dashboard() {
     fetchNoteSpaceNotes();
   }, [activeSideNoteSpace, session]);
 
-  useEffect(() => {
-    const fetchNoteSpaceNotes = async () => {
-      if (activeNoteSpace?.id && session?.user.id) {
-        const { data, error } = await supabaseClient
-          .from("Note to Notespace")
-          .select("id, Notes (id, text)")
-          .eq("user_id", session?.user.id)
-          .eq("notespace_id", activeNoteSpace.id)
-          .order("created_at", { ascending: false });
-
-        if (error) console.log(error);
-        else {
-          const notes: { id: any; text: any }[] = data.flatMap((note) => {
-            return note.Notes;
-          });
-          setNotes(notes);
-          setNotesLoaded(true);
-        }
-      } else {
-        if (session?.user.id) {
-          const { data, error } = await supabaseClient
-            .from("Notes")
-            .select("id, text")
-            .eq("user_id", session?.user.id)
-            .order("created_at", { ascending: false });
-
-          if (error) console.log(error);
-          else {
-            setNotes(data);
-            setNotesLoaded(true);
-          }
-        }
-      }
-    };
-    fetchNoteSpaceNotes();
-  }, [activeNoteSpace, session]);
-
+  // Fetch side navigator recommended notes
   useEffect(() => {
     const fetchRecommendedNotes = async () => {
       if (session?.user.id && activeNoteSpace?.id) {
-        // Fetch notespace count and check if notes have been loaded
-        const { data: notespaceCountData, count: notespaceCount } =
-          await supabaseClient
-            .from("Note to Notespace")
-            .select("*", { count: "exact", head: true })
-            .eq("id", activeNoteSpace?.id);
-
+        // Check if notes have been loaded
         if (!notesLoaded) {
           return;
         }
@@ -280,28 +240,32 @@ export default function Dashboard() {
     fetchRecommendedNotes();
   }, [session, activeNoteSpace, notes, notesLoaded]);
 
+  // Fetch notes when changing note spaces
   useEffect(() => {
-    if (startDate || endDate) {
-      const fetchNotes = async () => {
+    const fetchNoteSpaceNotes = async () => {
+      if (activeNoteSpace?.id && session?.user.id) {
+        const { data, error } = await supabaseClient
+          .from("Note to Notespace")
+          .select("id, Notes (id, text)")
+          .eq("user_id", session?.user.id)
+          .eq("notespace_id", activeNoteSpace.id)
+          .order("created_at", { ascending: false });
+
+        if (error) console.log(error);
+        else {
+          const notes: { id: any; text: any }[] = data.flatMap((note) => {
+            return note.Notes;
+          });
+          setNotes(notes);
+          setNotesLoaded(true);
+        }
+      } else {
         if (session?.user.id) {
-          let query = supabaseClient
+          const { data, error } = await supabaseClient
             .from("Notes")
             .select("id, text")
-            .eq("user_id", session?.user.id);
-
-          if (startDate) {
-            const formattedStartDate = startDate.toISOString();
-            query = query.gte("created_at", formattedStartDate);
-          }
-
-          if (endDate) {
-            const formattedEndDate = endDate.toISOString();
-            query = query.lte("created_at", formattedEndDate);
-          }
-
-          query = query.order("created_at", { ascending: false });
-
-          const { data, error } = await query;
+            .eq("user_id", session?.user.id)
+            .order("created_at", { ascending: false });
 
           if (error) console.log(error);
           else {
@@ -309,49 +273,83 @@ export default function Dashboard() {
             setNotesLoaded(true);
           }
         }
-      };
-
-      const fetchNotesWithinNoteSpace = async () => {
-        if (activeNoteSpace?.id && session?.user.id) {
-          let query = supabaseClient
-            .from("Note to Notespace")
-            .select("id, Notes (id, text)")
-            .eq("user_id", session?.user.id)
-            .eq("notespace_id", activeNoteSpace.id);
-
-          if (startDate) {
-            const formattedStartDate = startDate.toISOString();
-            query = query.gte("created_at", formattedStartDate);
-          }
-
-          if (endDate) {
-            const formattedEndDate = endDate.toISOString();
-            query = query.lte("created_at", formattedEndDate);
-          }
-
-          query = query.order("created_at", { ascending: false });
-
-          const { data, error } = await query;
-
-          if (error) console.log(error);
-          else {
-            const notes: { id: any; text: any }[] = data.flatMap((note) => {
-              return note.Notes;
-            });
-            setNotes(notes);
-            setNotesLoaded(true);
-          }
-        }
-      };
-
-      if (activeNoteSpace) {
-        fetchNotesWithinNoteSpace();
-      } else {
-        fetchNotes();
       }
+    };
+    fetchNoteSpaceNotes();
+  }, [activeNoteSpace, session]);
+
+  // Fetch notes within note spaces when using dates
+  useEffect(() => {
+    const fetchAllNotesWithDates = async () => {
+      if (session?.user.id) {
+        let query = supabaseClient
+          .from("Notes")
+          .select("id, text")
+          .eq("user_id", session?.user.id);
+
+        if (startDate) {
+          const formattedStartDate = startDate.toISOString();
+          query = query.gte("created_at", formattedStartDate);
+        }
+
+        if (endDate) {
+          const formattedEndDate = endDate.toISOString();
+          query = query.lte("created_at", formattedEndDate);
+        }
+
+        query = query.order("created_at", { ascending: false });
+
+        const { data, error } = await query;
+
+        if (error) console.log(error);
+        else {
+          setNotes(data);
+          setNotesLoaded(true);
+        }
+      }
+    };
+
+    const fetchNotesWithinNoteSpaceWithDates = async () => {
+      if (activeNoteSpace?.id && session?.user.id) {
+        let query = supabaseClient
+          .from("Note to Notespace")
+          .select("id, Notes (id, text)")
+          .eq("user_id", session?.user.id)
+          .eq("notespace_id", activeNoteSpace.id);
+
+        if (startDate) {
+          const formattedStartDate = startDate.toISOString();
+          query = query.gte("created_at", formattedStartDate);
+        }
+
+        if (endDate) {
+          const formattedEndDate = endDate.toISOString();
+          query = query.lte("created_at", formattedEndDate);
+        }
+
+        query = query.order("created_at", { ascending: false });
+
+        const { data, error } = await query;
+
+        if (error) console.log(error);
+        else {
+          const notes: { id: any; text: any }[] = data.flatMap((note) => {
+            return note.Notes;
+          });
+          setNotes(notes);
+          setNotesLoaded(true);
+        }
+      }
+    };
+
+    if (activeNoteSpace) {
+      fetchNotesWithinNoteSpaceWithDates();
+    } else {
+      fetchAllNotesWithDates();
     }
   }, [startDate, endDate, session, activeNoteSpace]);
 
+  // Reset side navigator state when switching between navigators
   useEffect(() => {
     if (sideNavigator != "Recommended Notes") {
       setRecommendedNotes([]);
@@ -366,6 +364,7 @@ export default function Dashboard() {
     }
   }, [sideNavigator]);
 
+  // Handle caret positioning on keydown events
   useEffect(() => {
     function isCursorInFirstLine(element: HTMLElement) {
       const selection = window.getSelection();
@@ -933,8 +932,6 @@ export default function Dashboard() {
                 onClick={async () => {
                   setActiveNoteSpace(null);
                   setSearchedText(null);
-                  setStartDate(null);
-                  setEndDate(null);
                   if (session?.user.id) {
                     const { data, error } = await supabaseClient
                       .from("Notes")
@@ -978,8 +975,6 @@ export default function Dashboard() {
                       setNotesLoaded(false);
                       setRecommendedNotes([]);
                       setSearchedText(null);
-                      setStartDate(null);
-                      setEndDate(null);
                       setActiveNoteSpace(notespace);
                     }}
                   >
@@ -1156,6 +1151,12 @@ export default function Dashboard() {
                         : "All Notes",
                     }}
                     className="text-box-edit"
+                    style={{
+                      cursor:
+                        activeNoteSpace && noteMode == "edit"
+                          ? "text"
+                          : "default",
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -1485,8 +1486,9 @@ export default function Dashboard() {
                         placeholder="Start Date"
                         value={startDate}
                         onChange={setStartDate}
-                        w={140}
+                        w={160}
                         valueFormat="MMM D, YYYY"
+                        clearable
                       />
                       <IconArrowBadgeRightFilled
                         size={16}
@@ -1497,32 +1499,15 @@ export default function Dashboard() {
                         placeholder="End Date"
                         value={endDate}
                         onChange={setEndDate}
-                        w={140}
+                        w={160}
                         valueFormat="MMM D, YYYY"
+                        clearable
                       />
                     </Group>
-
-                    <Button
-                      w={120}
+                    <ActionIcon
                       variant="outline"
-                      aria-label="Settings"
+                      size="lg"
                       color={"#ADB5BD"}
-                      styles={{
-                        section: { margin: 0 },
-                      }}
-                      leftSection={
-                        noteMode === "view" ? (
-                          <IconViewfinder
-                            style={{ width: "70%", height: "70%" }}
-                            stroke={1.5}
-                          />
-                        ) : (
-                          <IconEdit
-                            style={{ width: "70%", height: "70%" }}
-                            stroke={1.5}
-                          />
-                        )
-                      }
                       onClick={() => {
                         if (noteMode === "view") {
                           setNoteMode("edit");
@@ -1531,8 +1516,18 @@ export default function Dashboard() {
                         }
                       }}
                     >
-                      {noteMode === "view" ? "Selecting" : "Editing"}
-                    </Button>
+                      {noteMode === "view" ? (
+                        <IconViewfinder
+                          style={{ width: "70%", height: "70%" }}
+                          stroke={1.5}
+                        />
+                      ) : (
+                        <IconEdit
+                          style={{ width: "70%", height: "70%" }}
+                          stroke={1.5}
+                        />
+                      )}
+                    </ActionIcon>
                   </Flex>
                   <Stack>
                     <Select
@@ -1580,7 +1575,7 @@ export default function Dashboard() {
                         {activeSideNoteSpace?.id && (
                           <Stack my={8} mx={8}>
                             {noteSpaceNotes.length === 0 && (
-                              <Text fz="sm">
+                              <Text fz="sm" style={{ cursor: "default" }}>
                                 There are no notes in this note space.
                               </Text>
                             )}
@@ -1676,7 +1671,9 @@ export default function Dashboard() {
                       >
                         <Stack>
                           {recommendedNotes.length === 0 && (
-                            <Text fz="sm">There are no recommended notes.</Text>
+                            <Text fz="sm" style={{ cursor: "default" }}>
+                              There are no recommended notes.
+                            </Text>
                           )}
                           {recommendedNotes.length > 0 &&
                             recommendedNotes.map((note, index) => (
