@@ -1378,9 +1378,7 @@ export default function Dashboard() {
                                 if (error) {
                                   console.log(error);
                                   return;
-                                }
-
-                                console.log(data);
+                                }                                
 
                                 setSideNavigator("Semantic Search");
                                 setSideSearchTextInputValue(textToSearch);
