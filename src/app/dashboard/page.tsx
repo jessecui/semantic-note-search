@@ -37,11 +37,13 @@ import {
   IconEdit,
   IconInfoCircle,
   IconLogout,
+  IconMoon,
   IconPlaylistX,
   IconPlus,
   IconReportSearch,
   IconSearch,
   IconStack2,
+  IconSun,
   IconTextPlus,
   IconTrash,
   IconUser,
@@ -77,6 +79,7 @@ export default function Dashboard() {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
 
+  const [colorTheme, setColorTheme] = useState<"light" | "dark">("light");
   const [noteMode, setNoteMode] = useState<"view" | "edit">("edit");
 
   // Side note navigation states
@@ -1378,7 +1381,7 @@ export default function Dashboard() {
                                 if (error) {
                                   console.log(error);
                                   return;
-                                }                                
+                                }
 
                                 setSideNavigator("Semantic Search");
                                 setSideSearchTextInputValue(textToSearch);
@@ -1387,32 +1390,6 @@ export default function Dashboard() {
                             >
                               Search for Similar Notes
                             </MenuItem>
-                            {activeNoteSpace && (
-                              <MenuItem
-                                leftSection={
-                                  <IconPlaylistX
-                                    style={{ width: 16, height: 16 }}
-                                  />
-                                }
-                                onClick={async () => {
-                                  const { error } = await supabaseClient
-                                    .from("Note to Notespace")
-                                    .delete()
-                                    .eq("notespace_id", activeNoteSpace?.id)
-                                    .eq("note_id", note.id);
-
-                                  if (!error) {
-                                    setNotes(
-                                      notes.filter(
-                                        (note2) => note2.id !== note.id,
-                                      ),
-                                    );
-                                  }
-                                }}
-                              >
-                                Delete from {activeNoteSpace?.name}
-                              </MenuItem>
-                            )}
                             {activeSideNoteSpace?.name && (
                               <MenuItem
                                 leftSection={
@@ -1437,6 +1414,7 @@ export default function Dashboard() {
                                   }
 
                                   if (existingData?.length) {
+                                    openAlert();
                                     return;
                                   }
 
@@ -1464,6 +1442,33 @@ export default function Dashboard() {
                                 Add to {activeSideNoteSpace?.name}
                               </MenuItem>
                             )}
+                            {activeNoteSpace && (
+                              <MenuItem
+                                leftSection={
+                                  <IconPlaylistX
+                                    style={{ width: 16, height: 16 }}
+                                  />
+                                }
+                                onClick={async () => {
+                                  const { error } = await supabaseClient
+                                    .from("Note to Notespace")
+                                    .delete()
+                                    .eq("notespace_id", activeNoteSpace?.id)
+                                    .eq("note_id", note.id);
+
+                                  if (!error) {
+                                    setNotes(
+                                      notes.filter(
+                                        (note2) => note2.id !== note.id,
+                                      ),
+                                    );
+                                  }
+                                }}
+                              >
+                                Delete from {activeNoteSpace?.name}
+                              </MenuItem>
+                            )}
+
                             <MenuItem
                               leftSection={
                                 <IconTrash style={{ width: 16, height: 16 }} />
@@ -1523,6 +1528,7 @@ export default function Dashboard() {
                         clearable
                       />
                     </Group>
+
                     <ActionIcon
                       variant="outline"
                       size="lg"
@@ -1536,15 +1542,27 @@ export default function Dashboard() {
                       }}
                     >
                       {noteMode === "view" ? (
-                        <IconViewfinder
-                          style={{ width: "70%", height: "70%" }}
-                          stroke={1.5}
-                        />
+                        <IconViewfinder size={16} stroke={1.5} />
                       ) : (
-                        <IconEdit
-                          style={{ width: "70%", height: "70%" }}
-                          stroke={1.5}
-                        />
+                        <IconEdit size={16} stroke={1.5} />
+                      )}
+                    </ActionIcon>
+                    <ActionIcon
+                      variant="outline"
+                      size="lg"
+                      color={"#ADB5BD"}
+                      onClick={() => {
+                        if (colorTheme == "light") {
+                          setColorTheme("dark");
+                        } else {
+                          setColorTheme("light");
+                        }
+                      }}
+                    >
+                      {colorTheme === "light" ? (
+                        <IconSun size={16} stroke={1.5} />
+                      ) : (
+                        <IconMoon size={16} stroke={1.5} />
                       )}
                     </ActionIcon>
                   </Flex>
@@ -1599,7 +1617,7 @@ export default function Dashboard() {
                               </Text>
                             )}
                             {sideNoteSpaceNotes.map((note, index) => (
-                              <Menu key={index} position="left" trigger="hover">
+                              <Menu key={index} position="left">
                                 <MenuTarget>
                                   <Text
                                     fz="sm"
@@ -1616,7 +1634,7 @@ export default function Dashboard() {
                                   </Text>
                                 </MenuTarget>
                                 {activeNoteSpace && (
-                                  <MenuDropdown>
+                                  <MenuDropdown bg="#F9FBFD">
                                     <MenuItem
                                       leftSection={
                                         <IconTextPlus
@@ -1696,7 +1714,7 @@ export default function Dashboard() {
                           )}
                           {recommendedNotes.length > 0 &&
                             recommendedNotes.map((note, index) => (
-                              <Menu key={index} position="left" trigger="hover">
+                              <Menu key={index} position="left">
                                 <MenuTarget>
                                   <Text
                                     fz="sm"
@@ -1822,11 +1840,7 @@ export default function Dashboard() {
                                 </Box>
                                 <Stack>
                                   {sideSearchedNotes.map((note, index) => (
-                                    <Menu
-                                      key={index}
-                                      position="left"
-                                      trigger="hover"
-                                    >
+                                    <Menu key={index} position="left">
                                       <MenuTarget>
                                         <Text
                                           fz="sm"
