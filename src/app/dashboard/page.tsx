@@ -57,56 +57,60 @@ import "./dashboard.css";
 export default function Dashboard() {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
-  const editableNoteRef = useRef<HTMLDivElement>(null);
+
+  // Notes state
   const [notes, setNotes] = useState<{ id: any; text: any }[]>([]);
 
-  const [noteSpaceNotes, setNoteSpaceNotes] = useState<
-    { id: any; text: any }[]
-  >([]);
-
-  const [searchedText, setSearchedText] = useState<string | null>(null);
-
+  // Note space states
   const [noteSpaces, setNoteSpaces] = useState<{ id: any; name: string }[]>([]);
-
   const [activeNoteSpace, setActiveNoteSpace] = useState<{
     id: any;
     name: string;
   } | null>(null);
-
-  const [activeSideNoteSpace, setActiveSideNoteSpace] = useState<{
-    id: any;
-    name: string;
-  } | null>(null);
-
-  const caretPositionRef = useRef<number | null>(null);
-  const notesRef = useRef(notes);
-
-  const [noteMode, setNoteMode] = useState<"view" | "edit">("edit");
   const [hoveredNoteSpaceId, setHoveredNoteSpaceId] = useState<Number | null>(
     null,
   );
 
-  const [notesLoaded, setNotesLoaded] = useState(false);
+  // Note navigation and filtering states
+  const [searchedText, setSearchedText] = useState<string | null>(null);
+
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+
+  const [noteMode, setNoteMode] = useState<"view" | "edit">("edit");
+
+  // Side note navigation states
+  const [sideNavigator, setSideNavigator] = useState<string | null>(null);
 
   const [recommendedNotes, setRecommendedNotes] = useState<
     { id: any; text: any }[]
   >([]);
 
-  const [sideNavigator, setSideNavigator] = useState<string | null>(null);
+  const [activeSideNoteSpace, setActiveSideNoteSpace] = useState<{
+    id: any;
+    name: string;
+  } | null>(null);
+  const [sideNoteSpaceNotes, setSideNoteSpaceNotes] = useState<
+    { id: any; text: any }[]
+  >([]);
+
+  const [sideSearchTextInputValue, setSideSearchTextInputValue] = useState("");
+  const [sideSearchText, setSideSearchText] = useState("");
   const [sideSearchedNotes, setSideSearchedNotes] = useState<
     { id: any; text: string }[]
   >([]);
 
-  const [sideSearchText, setSideSearchText] = useState("");
-
-  const [alertOpened, { open: openAlert, close: closeAlert }] =
-    useDisclosure(false);
-
+  // Dashboard refs
+  const editableNoteRef = useRef<HTMLDivElement>(null);
+  const caretPositionRef = useRef<number | null>(null);
+  const notesRef = useRef(notes);
   const eventListenersRef = useRef<{
     [key: string]: (e: KeyboardEvent) => void;
   }>({});
+
+  // Alert disclosure for notifying user of duplicate note creation
+  const [alertOpened, { open: openAlert, close: closeAlert }] =
+    useDisclosure(false);
 
   // Update notes ref every time notes changes
   useEffect(() => {
@@ -145,7 +149,6 @@ export default function Dashboard() {
       }
     };
     fetchNotes();
-    setNotesLoaded(true);
 
     const fetchNoteSpaces = async () => {
       if (session?.user.id) {
@@ -164,121 +167,7 @@ export default function Dashboard() {
     fetchNoteSpaces();
   }, [session]);
 
-  // Fetch side navigator notes when searching note spaces
-  useEffect(() => {
-    const fetchNoteSpaceNotes = async () => {
-      if (activeSideNoteSpace?.id && session?.user.id) {
-        const { data, error } = await supabaseClient
-          .from("Note to Notespace")
-          .select("id, Notes (id, text)")
-          .eq("user_id", session?.user.id)
-          .eq("notespace_id", activeSideNoteSpace.id)
-          .order("created_at", { ascending: false });
-
-        if (error) console.log(error);
-        else {
-          const notes: { id: any; text: any }[] = data.flatMap((note) => {
-            return note.Notes;
-          });
-          setNoteSpaceNotes(notes);
-        }
-      } else {
-        setNoteSpaceNotes([]);
-      }
-    };
-    fetchNoteSpaceNotes();
-  }, [activeSideNoteSpace, session]);
-
-  // Fetch side navigator recommended notes
-  useEffect(() => {
-    const fetchRecommendedNotes = async () => {
-      if (session?.user.id && activeNoteSpace?.id) {
-        // Check if notes have been loaded
-        if (!notesLoaded) {
-          return;
-        }
-
-        // Fetch notespace embedding
-        const { data: notespaceData, error: notespaceError } =
-          await supabaseClient
-            .from("Notespaces")
-            .select("embedding")
-            .eq("id", activeNoteSpace?.id);
-
-        if (notespaceError) {
-          console.log(notespaceError);
-          return;
-        }
-
-        const embedding = notespaceData[0].embedding;
-
-        if (!embedding) {
-          setRecommendedNotes([]);
-          return;
-        }
-
-        const { data, error } = await supabaseClient.rpc("match_notes", {
-          query_embedding: embedding,
-          match_threshold: 1.8,
-          match_count: 1000,
-        });
-
-        if (error) {
-          console.log(error);
-          return;
-        }
-
-        // Deduplicate notes
-        const existingNoteIds = new Set(notes.map((note) => note.id));
-        const deduplicatedData = data.filter(
-          (note: { id: Number }) => !existingNoteIds.has(note.id),
-        );
-
-        setRecommendedNotes(deduplicatedData);
-      }
-    };
-    fetchRecommendedNotes();
-  }, [session, activeNoteSpace, notes, notesLoaded]);
-
-  // Fetch notes when changing note spaces
-  useEffect(() => {
-    const fetchNoteSpaceNotes = async () => {
-      if (activeNoteSpace?.id && session?.user.id) {
-        const { data, error } = await supabaseClient
-          .from("Note to Notespace")
-          .select("id, Notes (id, text)")
-          .eq("user_id", session?.user.id)
-          .eq("notespace_id", activeNoteSpace.id)
-          .order("created_at", { ascending: false });
-
-        if (error) console.log(error);
-        else {
-          const notes: { id: any; text: any }[] = data.flatMap((note) => {
-            return note.Notes;
-          });
-          setNotes(notes);
-          setNotesLoaded(true);
-        }
-      } else {
-        if (session?.user.id) {
-          const { data, error } = await supabaseClient
-            .from("Notes")
-            .select("id, text")
-            .eq("user_id", session?.user.id)
-            .order("created_at", { ascending: false });
-
-          if (error) console.log(error);
-          else {
-            setNotes(data);
-            setNotesLoaded(true);
-          }
-        }
-      }
-    };
-    fetchNoteSpaceNotes();
-  }, [activeNoteSpace, session]);
-
-  // Fetch notes within note spaces when using dates
+  // Fetch notes within note spaces
   useEffect(() => {
     const fetchAllNotesWithDates = async () => {
       if (session?.user.id) {
@@ -304,7 +193,6 @@ export default function Dashboard() {
         if (error) console.log(error);
         else {
           setNotes(data);
-          setNotesLoaded(true);
         }
       }
     };
@@ -337,17 +225,177 @@ export default function Dashboard() {
             return note.Notes;
           });
           setNotes(notes);
-          setNotesLoaded(true);
         }
       }
     };
+
+    if (searchedText) {
+      return;
+    }
 
     if (activeNoteSpace) {
       fetchNotesWithinNoteSpaceWithDates();
     } else {
       fetchAllNotesWithDates();
     }
-  }, [startDate, endDate, session, activeNoteSpace]);
+  }, [startDate, endDate, session, activeNoteSpace, searchedText]);
+
+  // Fetch notes when using main semantic search
+  useEffect(() => {
+    const semanticSearch = async () => {
+      if (!searchedText) {
+        return;
+      }
+      const embeddingResponse = await fetch(
+        `/embed?text=${encodeURIComponent(searchedText)}`,
+      );
+      const embedding = await embeddingResponse.json();
+
+      const { data, error } = await supabaseClient.rpc("match_notes", {
+        query_embedding: embedding,
+        match_threshold: 1.8,
+        match_count: 1000,
+        match_notespace_id: activeNoteSpace?.id,
+        match_start: startDate?.toISOString(),
+        match_end: endDate?.toISOString(),
+      });
+
+      if (error) {
+        console.log(error);
+        return;
+      }
+      setNotes(data);
+    };
+
+    semanticSearch();
+  }, [searchedText, activeNoteSpace, startDate, endDate]);
+
+  // Fetch side navigator semantically searched notes
+  useEffect(() => {
+    const fetchSideSearchedNotes = async () => {
+      if (sideSearchText === "") {
+        setSideSearchedNotes([]);
+        return;
+      }
+
+      const embeddingResponse = await fetch(
+        `/embed?text=${encodeURIComponent(sideSearchText)}`,
+      );
+      const embedding = await embeddingResponse.json();
+
+      const { data, error } = await supabaseClient.rpc("match_notes", {
+        query_embedding: embedding,
+        match_threshold: 1.8,
+        match_count: 1000,
+        match_start: startDate?.toISOString(),
+        match_end: endDate?.toISOString(),
+      });
+
+      if (error) {
+        console.log(error);
+        return;
+      }
+
+      setSideSearchedNotes(data);
+    };
+    fetchSideSearchedNotes();
+  }, [sideSearchText, startDate, endDate]);
+
+  // Fetch side navigator notes when viewing note spaces
+  useEffect(() => {
+    const fetchNoteSpaceNotes = async () => {
+      if (session?.user.id) {
+        if (!activeSideNoteSpace?.id) {
+          setSideNoteSpaceNotes([]);
+          return;
+        }
+
+        let query = supabaseClient
+          .from("Note to Notespace")
+          .select("id, Notes (id, text)")
+          .eq("user_id", session?.user.id)
+          .eq("notespace_id", activeSideNoteSpace.id);
+
+        if (startDate) {
+          const formattedStartDate = startDate.toISOString();
+          query = query.gte("created_at", formattedStartDate);
+        }
+
+        if (endDate) {
+          const formattedEndDate = endDate.toISOString();
+          query = query.lte("created_at", formattedEndDate);
+        }
+
+        query = query.order("created_at", { ascending: false });
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.log(error);
+          return;
+        }
+
+        const notes: { id: any; text: any }[] = data.flatMap((note) => {
+          return note.Notes;
+        });
+        setSideNoteSpaceNotes(notes);
+      }
+    };
+    fetchNoteSpaceNotes();
+  }, [activeSideNoteSpace, session, startDate, endDate]);
+
+  // Fetch side navigator recommended notes
+  useEffect(() => {
+    const fetchRecommendedNotes = async () => {
+      if (session?.user.id) {
+        if (!activeNoteSpace?.id) {
+          setRecommendedNotes([]);
+          return;
+        }
+        let query = supabaseClient
+          .from("Notespaces")
+          .select("embedding")
+          .eq("id", activeNoteSpace?.id);
+
+        // Fetch notespace embedding
+        const { data: notespaceData, error: notespaceError } = await query;
+
+        if (notespaceError) {
+          console.log(notespaceError);
+          return;
+        }
+
+        const embedding = notespaceData[0].embedding;
+
+        if (!embedding) {
+          setRecommendedNotes([]);
+          return;
+        }
+
+        const { data, error } = await supabaseClient.rpc("match_notes", {
+          query_embedding: embedding,
+          match_threshold: 1.8,
+          match_count: 1000,
+          match_start: startDate?.toISOString(),
+          match_end: endDate?.toISOString(),
+        });
+
+        if (error) {
+          console.log(error);
+          return;
+        }
+
+        // Deduplicate notes
+        const existingNoteIds = new Set(notes.map((note) => note.id));
+        const deduplicatedData = data.filter(
+          (note: { id: Number }) => !existingNoteIds.has(note.id),
+        );
+
+        setRecommendedNotes(deduplicatedData);
+      }
+    };
+    fetchRecommendedNotes();
+  }, [session, activeNoteSpace, notes, startDate, endDate]);
 
   // Reset side navigator state when switching between navigators
   useEffect(() => {
@@ -355,12 +403,12 @@ export default function Dashboard() {
       setRecommendedNotes([]);
     }
     if (sideNavigator != "Semantic Search") {
-      setSideSearchText("");
+      setSideSearchTextInputValue("");
       setSideSearchedNotes([]);
     }
     if (sideNavigator != "Note Spaces") {
       setActiveSideNoteSpace(null);
-      setNoteSpaceNotes([]);
+      setSideNoteSpaceNotes([]);
     }
   }, [sideNavigator]);
 
@@ -972,7 +1020,6 @@ export default function Dashboard() {
                       cursor: "pointer",
                     }}
                     onClick={() => {
-                      setNotesLoaded(false);
                       setRecommendedNotes([]);
                       setSearchedText(null);
                       setActiveNoteSpace(notespace);
@@ -1097,32 +1144,6 @@ export default function Dashboard() {
                     if (e.key == "Enter") {
                       e.preventDefault();
                       const textToSearch = (e.target as HTMLInputElement).value;
-
-                      const embeddingResponse = await fetch(
-                        `/embed?text=${encodeURIComponent(textToSearch)}`,
-                      );
-                      const embedding = await embeddingResponse.json();
-
-                      const { data, error } = await supabaseClient.rpc(
-                        "match_notes",
-                        {
-                          query_embedding: embedding,
-                          match_threshold: 1.8,
-                          match_count: 1000,
-                          match_notespace_id: activeNoteSpace?.id,
-                        },
-                      );
-
-                      if (error) {
-                        console.log(error);
-                        return;
-                      }
-
-                      console.log(activeNoteSpace);
-                      console.log(data);
-
-                      setNotes(data);
-
                       (e.target as HTMLInputElement).value = "";
                       setSearchedText(textToSearch);
                     }
@@ -1362,7 +1383,7 @@ export default function Dashboard() {
                                 console.log(data);
 
                                 setSideNavigator("Semantic Search");
-                                setSideSearchText(textToSearch);
+                                setSideSearchTextInputValue(textToSearch);
                                 setSideSearchedNotes(data);
                               }}
                             >
@@ -1436,9 +1457,9 @@ export default function Dashboard() {
                                     return;
                                   }
 
-                                  setNoteSpaceNotes([
+                                  setSideNoteSpaceNotes([
                                     { id: note.id, text: note.text },
-                                    ...noteSpaceNotes,
+                                    ...sideNoteSpaceNotes,
                                   ]);
                                 }}
                               >
@@ -1574,12 +1595,12 @@ export default function Dashboard() {
                         />
                         {activeSideNoteSpace?.id && (
                           <Stack my={8} mx={8}>
-                            {noteSpaceNotes.length === 0 && (
+                            {sideNoteSpaceNotes.length === 0 && (
                               <Text fz="sm" style={{ cursor: "default" }}>
                                 There are no notes in this note space.
                               </Text>
                             )}
-                            {noteSpaceNotes.map((note, index) => (
+                            {sideNoteSpaceNotes.map((note, index) => (
                               <Menu key={index} position="left" trigger="hover">
                                 <MenuTarget>
                                   <Text
@@ -1771,9 +1792,11 @@ export default function Dashboard() {
                             autosize
                             radius={4}
                             placeholder="Search"
-                            value={sideSearchText}
+                            value={sideSearchTextInputValue}
                             onChange={(event) =>
-                              setSideSearchText(event.currentTarget.value)
+                              setSideSearchTextInputValue(
+                                event.currentTarget.value,
+                              )
                             }
                             leftSection={
                               <IconSearch
@@ -1784,32 +1807,7 @@ export default function Dashboard() {
                             onKeyDown={async (e) => {
                               if (e.key == "Enter") {
                                 e.preventDefault();
-                                if (sideSearchText === "") {
-                                  setSideSearchedNotes([]);
-                                  return;
-                                }
-
-                                const embeddingResponse = await fetch(
-                                  `/embed?text=${encodeURIComponent(
-                                    sideSearchText,
-                                  )}`,
-                                );
-                                const embedding =
-                                  await embeddingResponse.json();
-
-                                const { data, error } =
-                                  await supabaseClient.rpc("match_notes", {
-                                    query_embedding: embedding,
-                                    match_threshold: 1.8,
-                                    match_count: 1000,
-                                  });
-
-                                if (error) {
-                                  console.log(error);
-                                  return;
-                                }
-
-                                setSideSearchedNotes(data);
+                                setSideSearchText(sideSearchTextInputValue);
                               }
                             }}
                           />
