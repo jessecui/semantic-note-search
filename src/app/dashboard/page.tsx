@@ -254,7 +254,7 @@ export default function Dashboard() {
       const { data, error } = await supabaseClient.rpc("match_notes", {
         query_embedding: embedding,
         match_threshold: 1.8,
-        match_count: 1000,
+        match_count: 100,
         match_notespace_id: activeNoteSpace?.id,
         match_start: startDate?.toISOString(),
         match_end: endDate?.toISOString(),
@@ -286,7 +286,7 @@ export default function Dashboard() {
       const { data, error } = await supabaseClient.rpc("match_notes", {
         query_embedding: embedding,
         match_threshold: 1.8,
-        match_count: 1000,
+        match_count: 100,
         match_start: startDate?.toISOString(),
         match_end: endDate?.toISOString(),
       });
@@ -375,7 +375,7 @@ export default function Dashboard() {
         const { data, error } = await supabaseClient.rpc("match_notes", {
           query_embedding: embedding,
           match_threshold: 1.8,
-          match_count: 1000,
+          match_count: 100,
           match_start: startDate?.toISOString(),
           match_end: endDate?.toISOString(),
         });
@@ -1372,7 +1372,7 @@ export default function Dashboard() {
                                   await supabaseClient.rpc("match_notes", {
                                     query_embedding: embedding,
                                     match_threshold: 1.8,
-                                    match_count: 1000,
+                                    match_count: 100,
                                   });
 
                                 if (error) {
