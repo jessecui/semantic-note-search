@@ -1372,9 +1372,7 @@ export default function Dashboard() {
                           <MenuDropdown>
                             <MenuItem
                               leftSection={
-                                <IconSearch
-                                  style={{ width: 16, height: 16 }}
-                                />
+                                <IconSearch style={{ width: 16, height: 16 }} />
                               }
                               onClick={async (e) => {
                                 setActiveNoteSpace(null);
@@ -1817,7 +1815,9 @@ export default function Dashboard() {
                           withBorder
                           mah="78.5vh"
                           style={{ overflow: "auto" }}
-                          className="custom-scrollbar"
+                          className="custom-scrollbar"                          
+                          pb={sideSearchedNotes.length ? 8 : 0}
+                          pr={8}
                         >
                           <Textarea
                             variant="unstyled"
