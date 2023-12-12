@@ -141,24 +141,8 @@ export default function Dashboard() {
     editableNoteRef.current?.focus();
   }, [router]);
 
-  // Fetch initial notes and note spaces
+  // Fetch initial note spaces
   useEffect(() => {
-    const fetchNotes = async () => {
-      if (session?.user.id) {
-        const { data, error } = await supabaseClient
-          .from("Notes")
-          .select("id, text")
-          .eq("user_id", session?.user.id)
-          .order("created_at", { ascending: false });
-
-        if (error) console.log(error);
-        else {
-          setNotes(data);
-        }
-      }
-    };
-    fetchNotes();
-
     const fetchNoteSpaces = async () => {
       if (session?.user.id) {
         const { data, error } = await supabaseClient
@@ -191,7 +175,9 @@ export default function Dashboard() {
         }
 
         if (endDate) {
-          const formattedEndDate = endDate.toISOString();
+          const formattedEndDate = new Date(
+            new Date(endDate).setDate(endDate.getDate() + 1),
+          ).toISOString();
           query = query.lte("created_at", formattedEndDate);
         }
 
@@ -201,7 +187,15 @@ export default function Dashboard() {
 
         if (error) console.log(error);
         else {
-          setNotes(data);
+          const decryptionResponse = await fetch("/decrypt-notes", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ notes: data }),
+          });
+          const decryptedNotes = await decryptionResponse.json();
+          setNotes(decryptedNotes);
         }
       }
     };
@@ -220,7 +214,9 @@ export default function Dashboard() {
         }
 
         if (endDate) {
-          const formattedEndDate = endDate.toISOString();
+          const formattedEndDate = new Date(
+            new Date(endDate).setDate(endDate.getDate() + 1),
+          ).toISOString();
           query = query.lte("created_at", formattedEndDate);
         }
 
@@ -233,7 +229,15 @@ export default function Dashboard() {
           const notes: { id: any; text: any }[] = data.flatMap((note) => {
             return note.Notes;
           });
-          setNotes(notes);
+          const decryptionResponse = await fetch("/decrypt-notes", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ notes }),
+          });
+          const decryptedNotes = await decryptionResponse.json();
+          setNotes(decryptedNotes);
         }
       }
     };
@@ -273,7 +277,15 @@ export default function Dashboard() {
         console.log(error);
         return;
       }
-      setNotes(data);
+      const decryptionResponse = await fetch("/decrypt-notes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ notes: data }),
+      });
+      const decryptedNotes = await decryptionResponse.json();
+      setNotes(decryptedNotes);
     };
 
     semanticSearch();
@@ -305,7 +317,15 @@ export default function Dashboard() {
         return;
       }
 
-      setSideSearchedNotes(data);
+      const decryptionResponse = await fetch("/decrypt-notes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ notes: data }),
+      });
+      const decryptedNotes = await decryptionResponse.json();
+      setSideSearchedNotes(decryptedNotes);
     };
     fetchSideSearchedNotes();
   }, [sideSearchText, startDate, endDate]);
@@ -331,7 +351,9 @@ export default function Dashboard() {
         }
 
         if (endDate) {
-          const formattedEndDate = endDate.toISOString();
+          const formattedEndDate = new Date(
+            new Date(endDate).setDate(endDate.getDate() + 1),
+          ).toISOString();
           query = query.lte("created_at", formattedEndDate);
         }
 
@@ -347,7 +369,15 @@ export default function Dashboard() {
         const notes: { id: any; text: any }[] = data.flatMap((note) => {
           return note.Notes;
         });
-        setSideNoteSpaceNotes(notes);
+        const decryptionResponse = await fetch("/decrypt-notes", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ notes }),
+        });
+        const decryptedNotes = await decryptionResponse.json();
+        setSideNoteSpaceNotes(decryptedNotes);
       }
     };
     fetchNoteSpaceNotes();
@@ -394,13 +424,20 @@ export default function Dashboard() {
           return;
         }
 
-        // Deduplicate notes
         const existingNoteIds = new Set(notes.map((note) => note.id));
         const deduplicatedData = data.filter(
           (note: { id: Number }) => !existingNoteIds.has(note.id),
         );
 
-        setRecommendedNotes(deduplicatedData);
+        const decryptionResponse = await fetch("/decrypt-notes", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ notes: deduplicatedData }),
+        });
+        const decryptedNotes = await decryptionResponse.json();
+        setRecommendedNotes(decryptedNotes);
       }
     };
     fetchRecommendedNotes();
@@ -878,6 +915,12 @@ export default function Dashboard() {
         .eq("id", noteId);
 
       if (data && data.length) {
+        const encryptResponse = await fetch(
+          `/encrypt?text=${encodeURIComponent(newNoteText)}`,
+        );
+
+        const encryptedText = (await encryptResponse.json()).encryption;
+
         let embedding = null;
         const embeddingResponse = await fetch(
           `/embed?text=${encodeURIComponent(newNoteText)}`,
@@ -886,7 +929,7 @@ export default function Dashboard() {
 
         const { error } = await supabaseClient
           .from("Notes")
-          .update({ text: newNoteText, embedding })
+          .update({ text: encryptedText, embedding })
           .eq("id", noteId);
 
         if (!error) {
@@ -996,19 +1039,6 @@ export default function Dashboard() {
                 }}
                 onClick={async () => {
                   setActiveNoteSpace(null);
-                  setSearchedText(null);
-                  if (session?.user.id) {
-                    const { data, error } = await supabaseClient
-                      .from("Notes")
-                      .select("id, text")
-                      .eq("user_id", session?.user.id)
-                      .order("created_at", { ascending: false });
-
-                    if (error) console.log(error);
-                    else {
-                      setNotes(data);
-                    }
-                  }
                 }}
               >
                 <IconStack2 size={16} />
@@ -1283,6 +1313,13 @@ export default function Dashboard() {
                           if (noteText) {
                             editableNoteRef.current.textContent = "";
 
+                            const encryptResponse = await fetch(
+                              `/encrypt?text=${encodeURIComponent(noteText)}`,
+                            );
+
+                            const encryptedText = (await encryptResponse.json())
+                              .encryption;
+
                             // TODO: Make notes state update instantaneous upon enter key press
                             const embeddingResponse = await fetch(
                               `/embed?text=${encodeURIComponent(noteText)}`,
@@ -1291,20 +1328,19 @@ export default function Dashboard() {
 
                             const { data, error } = await supabaseClient
                               .from("Notes")
-                              .insert([{ text: noteText, embedding }])
+                              .insert([{ text: encryptedText, embedding }])
                               .select();
 
                             if (!error) {
                               if (activeNoteSpace?.id) {
-                                const { data: data2, error: error2 } =
-                                  await supabaseClient
-                                    .from("Note to Notespace")
-                                    .insert([
-                                      {
-                                        notespace_id: activeNoteSpace?.id,
-                                        note_id: data[0].id,
-                                      },
-                                    ]);
+                                const { error: error2 } = await supabaseClient
+                                  .from("Note to Notespace")
+                                  .insert([
+                                    {
+                                      notespace_id: activeNoteSpace?.id,
+                                      note_id: data[0].id,
+                                    },
+                                  ]);
                                 if (error2) {
                                   console.log(error2);
                                 }
@@ -1412,7 +1448,6 @@ export default function Dashboard() {
 
                                 setSideNavigator("Semantic Search");
                                 setSideSearchTextInputValue(textToSearch);
-                                setSideSearchedNotes(data);
                               }}
                             >
                               Side Search for Similar Notes
@@ -1815,7 +1850,7 @@ export default function Dashboard() {
                           withBorder
                           mah="78.5vh"
                           style={{ overflow: "auto" }}
-                          className="custom-scrollbar"                          
+                          className="custom-scrollbar"
                           pb={sideSearchedNotes.length ? 8 : 0}
                           pr={8}
                         >
