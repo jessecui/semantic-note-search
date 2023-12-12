@@ -1372,7 +1372,22 @@ export default function Dashboard() {
                           <MenuDropdown>
                             <MenuItem
                               leftSection={
-                                <IconSearch style={{ width: 16, height: 16 }} />
+                                <IconSearch
+                                  style={{ width: 16, height: 16 }}
+                                />
+                              }
+                              onClick={async (e) => {
+                                setActiveNoteSpace(null);
+                                setSearchedText(note.text);
+                              }}
+                            >
+                              Search for Similar Notes
+                            </MenuItem>
+                            <MenuItem
+                              leftSection={
+                                <IconReportSearch
+                                  style={{ width: 16, height: 16 }}
+                                />
                               }
                               onClick={async (e) => {
                                 const textToSearch = note.text;
@@ -1402,7 +1417,7 @@ export default function Dashboard() {
                                 setSideSearchedNotes(data);
                               }}
                             >
-                              Search for Similar Notes
+                              Side Search for Similar Notes
                             </MenuItem>
                             {activeSideNoteSpace?.name && (
                               <MenuItem
