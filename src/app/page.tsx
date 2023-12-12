@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Box,
   Button,
@@ -10,11 +12,15 @@ import {
   Group,
   Text,
   Title,
+  useMantineColorScheme,
 } from "@mantine/core";
 import Image from "next/image";
 import Link from "next/link";
 
 export default function Home() {
+  const { setColorScheme } = useMantineColorScheme();  
+  setColorScheme("light");
+  
   return (
     <main>
       <Container size="md">
@@ -59,8 +65,9 @@ export default function Home() {
             <Image
               src="/notes-playground-art.png"
               alt="Notes Playground Art"
-              width={420}
-              height={420}
+              width={372}
+              height={372}
+              style={{objectFit: "contain"}}
               priority
             />
           </GridCol>
