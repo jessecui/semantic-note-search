@@ -930,7 +930,16 @@ export default function Dashboard() {
             label={
               <Flex align="center">
                 <Image
+                  className="light-only"
                   src="/crux-logo.png"
+                  alt="Crux Logo"
+                  width={75}
+                  height={25}
+                  priority
+                />
+                <Image
+                  className="dark-only"
+                  src="/crux-logo-dark.png"
                   alt="Crux Logo"
                   width={75}
                   height={25}
@@ -1519,10 +1528,7 @@ export default function Dashboard() {
                         valueFormat="MMM D, YYYY"
                         clearable
                       />
-                      <IconArrowBadgeRightFilled
-                        size={16}
-                        className="icon"
-                      />
+                      <IconArrowBadgeRightFilled size={16} className="icon" />
                       <DatePickerInput
                         leftSection={<IconCalendar size={16} />}
                         placeholder="End Date"
@@ -1564,8 +1570,8 @@ export default function Dashboard() {
                         }
                       }}
                     >
-                      <IconSun size={16} stroke={1.5} className="icon-light" />
-                      <IconMoon size={16} stroke={1.5} className="icon-dark" />
+                      <IconSun size={16} stroke={1.5} className="light-only" />
+                      <IconMoon size={16} stroke={1.5} className="dark-only" />
                     </ActionIcon>
                   </Flex>
                   <Stack>
@@ -1830,10 +1836,7 @@ export default function Dashboard() {
                               <Divider mt={0} mb={16} mx={2} />
                               <Flex>
                                 <Box mx={8}>
-                                  <IconArticle
-                                    size={16}
-                                    className="icon"
-                                  />
+                                  <IconArticle size={16} className="icon" />
                                 </Box>
                                 <Stack>
                                   {sideSearchedNotes.map((note, index) => (

@@ -98,18 +98,18 @@
   background-color: var(--mantine-color-dark-5);
 }
 
-[data-mantine-color-scheme="light"] .icon-light {
+[data-mantine-color-scheme="light"] .dark-only {
   display: none;
 }
 
-[data-mantine-color-scheme="dark"] .icon-light {
+[data-mantine-color-scheme="dark"] .dark-only {
   display: block;
 }
 
-[data-mantine-color-scheme="light"] .icon-dark {
+[data-mantine-color-scheme="light"] .light-only {
   display: block;
 }
 
-[data-mantine-color-scheme="dark"] .icon-dark {
+[data-mantine-color-scheme="dark"] .light-only {
   display: none;
 }
