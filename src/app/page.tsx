@@ -12,15 +12,11 @@ import {
   Group,
   Text,
   Title,
-  useMantineColorScheme,
 } from "@mantine/core";
 import Image from "next/image";
 import Link from "next/link";
 
 export default function Home() {
-  const { setColorScheme } = useMantineColorScheme();  
-  setColorScheme("light");
-  
   return (
     <main>
       <Container size="md">
@@ -33,11 +29,14 @@ export default function Home() {
               height={30}
               priority
             />
-            <Group><Link href="/login" passHref>
-              <Button variant="outline">Log In</Button>
-            </Link><Link href="/signup" passHref>
-              <Button>Sign Up</Button>
-            </Link></Group>            
+            <Group>
+              <Link href="/login" passHref>
+                <Button variant="outline">Log In</Button>
+              </Link>
+              <Link href="/signup" passHref>
+                <Button>Sign Up</Button>
+              </Link>
+            </Group>
           </Flex>
         </nav>
         <Grid align="center">
@@ -67,7 +66,7 @@ export default function Home() {
               alt="Notes Playground Art"
               width={372}
               height={372}
-              style={{objectFit: "contain"}}
+              style={{ objectFit: "contain" }}
               priority
             />
           </GridCol>
