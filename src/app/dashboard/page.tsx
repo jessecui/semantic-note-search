@@ -24,6 +24,8 @@ import {
   Stack,
   Text,
   Textarea,
+  useComputedColorScheme,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { useDisclosure } from "@mantine/hooks";
@@ -79,7 +81,11 @@ export default function Dashboard() {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
 
-  const [colorTheme, setColorTheme] = useState<"light" | "dark">("light");
+  const { setColorScheme } = useMantineColorScheme();
+  const computedColorScheme = useComputedColorScheme("light", {
+    getInitialValueInEffect: true,
+  });
+
   const [noteMode, setNoteMode] = useState<"view" | "edit">("edit");
 
   // Side note navigation states
@@ -916,7 +922,7 @@ export default function Dashboard() {
   return (
     <>
       <AppShell navbar={{ width: 240, breakpoint: "xs" }} padding="md">
-        <AppShellNavbar p="md" bg="#F9FBFD">
+        <AppShellNavbar p="md" className="navbar">
           <NavLink
             p={0}
             mt={4}
@@ -936,21 +942,18 @@ export default function Dashboard() {
             <NavLink
               mt={6}
               p={0}
-              leftSection={<IconUser color="#5F6D7E" size={16} />}
+              leftSection={<IconUser size={16} />}
               style={{ cursor: "default" }}
-              label={
-                <Text c="#5F6D7E" size="sm">
-                  {session?.user.email}
-                </Text>
-              }
+              className="navlink-disabled"
+              label={<Text size="sm">{session?.user.email}</Text>}
             />
             <Divider my={8} />
             <NavLink
               p={0}
-              leftSection={<IconLogout color="#5F6D7E" size={16} />}
+              leftSection={<IconLogout size={16} />}
+              className="navlink"
               label={
                 <Text
-                  c="#5F6D7E"
                   size="sm"
                   onClick={async () => {
                     await supabaseClient.auth.signOut();
@@ -972,7 +975,9 @@ export default function Dashboard() {
             </Text>
             <Stack gap={4}>
               <Text
-                c={activeNoteSpace == null ? "#282E36" : "#5F6D7E"}
+                className={
+                  activeNoteSpace == null ? "navlink-selected" : "navlink"
+                }
                 fw={600}
                 style={{
                   display: "flex",
@@ -1010,10 +1015,10 @@ export default function Dashboard() {
                   onMouseLeave={() => setHoveredNoteSpaceId(null)}
                 >
                   <Text
-                    c={
+                    className={
                       notespace.id == activeNoteSpace?.id
-                        ? "#282E36"
-                        : "#5F6D7E"
+                        ? "navlink-selected"
+                        : "navlink"
                     }
                     fw={600}
                     style={{
@@ -1046,7 +1051,7 @@ export default function Dashboard() {
                           />
                         </ActionIcon>
                       </MenuTarget>
-                      <MenuDropdown bg="#F9FBFD">
+                      <MenuDropdown>
                         <MenuItem
                           leftSection={
                             <IconTrash style={{ width: 16, height: 16 }} />
@@ -1079,7 +1084,7 @@ export default function Dashboard() {
               ))}
               <Text
                 mt={8}
-                c={"#5F6D7E"}
+                className="navlink"
                 fw={500}
                 style={{
                   display: "flex",
@@ -1355,7 +1360,7 @@ export default function Dashboard() {
                       return noteMode === "view" ? (
                         <Menu offset={0} position="right" key={index}>
                           <MenuTarget>{textComponent}</MenuTarget>
-                          <MenuDropdown bg="#F9FBFD">
+                          <MenuDropdown>
                             <MenuItem
                               leftSection={
                                 <IconSearch style={{ width: 16, height: 16 }} />
@@ -1516,7 +1521,7 @@ export default function Dashboard() {
                       />
                       <IconArrowBadgeRightFilled
                         size={16}
-                        style={{ color: "#ADB5BD" }}
+                        className="icon"
                       />
                       <DatePickerInput
                         leftSection={<IconCalendar size={16} />}
@@ -1532,7 +1537,7 @@ export default function Dashboard() {
                     <ActionIcon
                       variant="outline"
                       size="lg"
-                      color={"#ADB5BD"}
+                      className="outline-icon"
                       onClick={() => {
                         if (noteMode === "view") {
                           setNoteMode("edit");
@@ -1550,20 +1555,17 @@ export default function Dashboard() {
                     <ActionIcon
                       variant="outline"
                       size="lg"
-                      color={"#ADB5BD"}
+                      className="outline-icon"
                       onClick={() => {
-                        if (colorTheme == "light") {
-                          setColorTheme("dark");
+                        if (computedColorScheme == "light") {
+                          setColorScheme("dark");
                         } else {
-                          setColorTheme("light");
+                          setColorScheme("light");
                         }
                       }}
                     >
-                      {colorTheme === "light" ? (
-                        <IconSun size={16} stroke={1.5} />
-                      ) : (
-                        <IconMoon size={16} stroke={1.5} />
-                      )}
+                      <IconSun size={16} stroke={1.5} className="icon-light" />
+                      <IconMoon size={16} stroke={1.5} className="icon-dark" />
                     </ActionIcon>
                   </Flex>
                   <Stack>
@@ -1593,7 +1595,6 @@ export default function Dashboard() {
                           value={activeSideNoteSpace?.name}
                           leftSection={<IconClipboardText size={16} />}
                           variant="unstyled"
-                          className="input-with-styled-placeholder"
                           onChange={(value) => {
                             setActiveSideNoteSpace({
                               name: value as string,
@@ -1602,13 +1603,9 @@ export default function Dashboard() {
                               )?.id,
                             });
                           }}
-                          styles={{
-                            input: {
-                              color: "#5F6D7E",
-                            },
-                          }}
                           clearable
                         />
+                        {/* TODO: Refactor and remove Menu when there is no active note space */}
                         {activeSideNoteSpace?.id && (
                           <Stack my={8} mx={8}>
                             {sideNoteSpaceNotes.length === 0 && (
@@ -1634,7 +1631,7 @@ export default function Dashboard() {
                                   </Text>
                                 </MenuTarget>
                                 {activeNoteSpace && (
-                                  <MenuDropdown bg="#F9FBFD">
+                                  <MenuDropdown>
                                     <MenuItem
                                       leftSection={
                                         <IconTextPlus
@@ -1835,7 +1832,7 @@ export default function Dashboard() {
                                 <Box mx={8}>
                                   <IconArticle
                                     size={16}
-                                    style={{ color: "#ADB5BD" }}
+                                    className="icon"
                                   />
                                 </Box>
                                 <Stack>
