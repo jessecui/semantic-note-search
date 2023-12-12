@@ -1046,7 +1046,7 @@ export default function Dashboard() {
                     {notespace.name}
                   </Text>
                   {hoveredNoteSpaceId === notespace.id && (
-                    <Menu offset={0} position="bottom-start">
+                    <Menu offset={-8} position="bottom-start">
                       <MenuTarget>
                         <ActionIcon
                           variant="subtle"
