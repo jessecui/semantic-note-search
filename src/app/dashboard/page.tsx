@@ -153,7 +153,15 @@ export default function Dashboard() {
 
         if (error) console.log(error);
         else {
-          setNoteSpaces(data);
+          const decryptionResponse = await fetch("/decrypt-note-spaces", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ noteSpaces: data }),
+          });
+          const decryptedNotes = await decryptionResponse.json();
+          setNoteSpaces(decryptedNotes);
         }
       }
     };
@@ -1022,10 +1030,7 @@ export default function Dashboard() {
             style={{ overflow: "auto" }}
             className="custom-scrollbar"
           >
-            <Text size="lg" fw="500" mb={8}>
-              Note Spaces
-            </Text>
-            <Stack gap={4}>
+            <Stack gap={4} mt={8}>
               <Text
                 className={
                   activeNoteSpace == null ? "navlink-selected" : "navlink"
@@ -1122,7 +1127,7 @@ export default function Dashboard() {
                 </Flex>
               ))}
               <Text
-                mt={8}
+                mt={4}
                 className="navlink"
                 fw={500}
                 style={{
@@ -1133,6 +1138,8 @@ export default function Dashboard() {
                 }}
                 onClick={async () => {
                   let newNoteSpaceName = "Note Space ";
+
+                  // Find a unique note space name with an appended number
                   for (
                     let i = noteSpaces.length;
                     i < noteSpaces.length * 2;
@@ -1149,9 +1156,16 @@ export default function Dashboard() {
                     }
                   }
 
+                  const encryptResponse = await fetch(
+                    `/encrypt?text=${encodeURIComponent(newNoteSpaceName)}`,
+                  );
+
+                  const encryptedText = (await encryptResponse.json())
+                    .encryption;
+
                   const { data, error } = await supabaseClient
                     .from("Notespaces")
-                    .insert([{ name: newNoteSpaceName }])
+                    .insert([{ name: encryptedText }])
                     .select();
 
                   if (!error) {
@@ -1240,11 +1254,19 @@ export default function Dashboard() {
                         .eq("user_id", session?.user.id)
                         .eq("name", noteSpaceName);
 
+                      // If notespace name already exists, reset the text
                       if (data && data.length) {
                         (e.target as HTMLElement).innerText =
                           activeNoteSpace?.name as string;
                         return;
                       }
+
+                      const encryptResponse = await fetch(
+                        `/encrypt?text=${encodeURIComponent(noteSpaceName)}`,
+                      );
+
+                      const encryptedText = (await encryptResponse.json())
+                        .encryption;
 
                       const embeddingResponse = await fetch(
                         `/embed?text=${encodeURIComponent(noteSpaceName)}`,
@@ -1253,7 +1275,7 @@ export default function Dashboard() {
 
                       const { error } = await supabaseClient
                         .from("Notespaces")
-                        .update({ name: noteSpaceName, embedding: embedding })
+                        .update({ name: encryptedText, embedding: embedding })
                         .eq("id", activeNoteSpace?.id);
 
                       if (error) {
