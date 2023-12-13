@@ -7,6 +7,7 @@ import {
   AppShellMain,
   AppShellNavbar,
   Box,
+  Button,
   Container,
   Divider,
   Flex,
@@ -1010,19 +1011,32 @@ export default function Dashboard() {
             <Divider my={8} />
             <NavLink
               p={0}
+              leftSection={
+                <>
+                  <IconSun size={16} className="light-only" />
+                  <IconMoon size={16} className="dark-only" />
+                </>
+              }
+              className="navlink"
+              onClick={() => {
+                if (computedColorScheme == "light") {
+                  setColorScheme("dark");
+                } else {
+                  setColorScheme("light");
+                }
+              }}
+              label={<Text size="sm">Change Appearance</Text>}
+              mb={8}
+            />
+            <NavLink
+              p={0}
               leftSection={<IconLogout size={16} />}
               className="navlink"
-              label={
-                <Text
-                  size="sm"
-                  onClick={async () => {
-                    await supabaseClient.auth.signOut();
-                    router.push("/");
-                  }}
-                >
-                  Log Out
-                </Text>
-              }
+              onClick={async () => {
+                await supabaseClient.auth.signOut();
+                router.push("/");
+              }}
+              label={<Text size="sm">Log Out</Text>}
             />
           </NavLink>
           <Box
@@ -1594,8 +1608,8 @@ export default function Dashboard() {
                         placeholder="Start Date"
                         value={startDate}
                         onChange={setStartDate}
-                        w={160}
-                        valueFormat="MMM D, YYYY"
+                        w={140}
+                        valueFormat="M/D/YYYY"
                         clearable
                       />
                       <IconArrowBadgeRightFilled size={16} className="icon" />
@@ -1604,16 +1618,22 @@ export default function Dashboard() {
                         placeholder="End Date"
                         value={endDate}
                         onChange={setEndDate}
-                        w={160}
-                        valueFormat="MMM D, YYYY"
+                        w={140}
+                        valueFormat="M/D/YYYY"
                         clearable
                       />
                     </Group>
-
-                    <ActionIcon
+                    <Button
+                      leftSection={
+                        noteMode === "view" ? (
+                          <IconViewfinder size={16} />
+                        ) : (
+                          <IconEdit size={16} />
+                        )
+                      }
                       variant="outline"
-                      size="lg"
-                      className="outline-icon"
+                      w={110}
+                      className="outline-button"
                       onClick={() => {
                         if (noteMode === "view") {
                           setNoteMode("edit");
@@ -1622,27 +1642,8 @@ export default function Dashboard() {
                         }
                       }}
                     >
-                      {noteMode === "view" ? (
-                        <IconViewfinder size={16} stroke={1.5} />
-                      ) : (
-                        <IconEdit size={16} stroke={1.5} />
-                      )}
-                    </ActionIcon>
-                    <ActionIcon
-                      variant="outline"
-                      size="lg"
-                      className="outline-icon"
-                      onClick={() => {
-                        if (computedColorScheme == "light") {
-                          setColorScheme("dark");
-                        } else {
-                          setColorScheme("light");
-                        }
-                      }}
-                    >
-                      <IconSun size={16} stroke={1.5} className="light-only" />
-                      <IconMoon size={16} stroke={1.5} className="dark-only" />
-                    </ActionIcon>
+                      {noteMode === "view" ? "Viewing" : "Editing"}
+                    </Button>
                   </Flex>
                   <Stack>
                     <Select

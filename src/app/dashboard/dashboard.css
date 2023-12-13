@@ -78,23 +78,23 @@
   color: var(--mantine-color-placeholder);
 }
 
-[data-mantine-color-scheme="light"] .outline-icon {
+[data-mantine-color-scheme="light"] .outline-button {
   color: var(--mantine-color-placeholder);
   border-color: var(--mantine-color-gray-4);
   background-color: white;
 }
 
-[data-mantine-color-scheme="dark"] .outline-icon {
+[data-mantine-color-scheme="dark"] .outline-button {
   color: var(--mantine-color-placeholder);
   border-color: var(--mantine-color-dark-4);
   background-color: var(--mantine-color-dark-6);
 }
 
-[data-mantine-color-scheme="light"] .outline-icon:hover {
+[data-mantine-color-scheme="light"] .outline-button:hover {
   background-color: var(--mantine-color-gray-0);
 }
 
-[data-mantine-color-scheme="dark"] .outline-icon:hover {
+[data-mantine-color-scheme="dark"] .outline-button:hover {
   background-color: var(--mantine-color-dark-5);
 }
 
