@@ -1624,8 +1624,13 @@ export default function Dashboard() {
             <GridCol span={5}>
               <Container>
                 <Stack gap={32}>
-                  <Flex display="flex" justify="space-between">
-                    <Group gap={4}>
+                  <Flex
+                    display="flex"
+                    justify="space-between"
+                    wrap="wrap"
+                    gap={12}
+                  >
+                    <Group gap={4} style={{ flex: "1 1 auto" }}>
                       <DatePickerInput
                         leftSection={<IconCalendar size={16} />}
                         placeholder="Start Date"
