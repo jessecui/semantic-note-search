@@ -1560,54 +1560,6 @@ export default function Dashboard() {
                                 Add to {activeSideNoteSpace?.name}
                               </MenuItem>
                             )}
-                            {activeNoteSpace && (
-                              <MenuItem
-                                leftSection={
-                                  <IconPlaylistX
-                                    style={{ width: 16, height: 16 }}
-                                  />
-                                }
-                                onClick={async () => {
-                                  const { error } = await supabaseClient
-                                    .from("Note to Notespace")
-                                    .delete()
-                                    .eq("notespace_id", activeNoteSpace?.id)
-                                    .eq("note_id", note.id);
-
-                                  if (!error) {
-                                    setNotes(
-                                      notes.filter(
-                                        (note2) => note2.id !== note.id,
-                                      ),
-                                    );
-                                  }
-                                }}
-                              >
-                                Delete from {activeNoteSpace?.name}
-                              </MenuItem>
-                            )}
-
-                            <MenuItem
-                              leftSection={
-                                <IconTrash style={{ width: 16, height: 16 }} />
-                              }
-                              onClick={async () => {
-                                const { error } = await supabaseClient
-                                  .from("Notes")
-                                  .delete()
-                                  .eq("id", note.id);
-
-                                if (!error) {
-                                  setNotes(
-                                    notes.filter(
-                                      (note2) => note2.id !== note.id,
-                                    ),
-                                  );
-                                }
-                              }}
-                            >
-                              Delete Note
-                            </MenuItem>
                           </MenuDropdown>
                         </Menu>
                       ) : (
