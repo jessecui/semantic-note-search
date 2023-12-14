@@ -828,12 +828,14 @@ export default function Dashboard() {
               caretPositionRef.current = previousElement.textContent!.length;
             }
 
+            const noteIdToDelete = notes[index].id;
+
             // Delete from supabase
             if (activeNoteSpace?.id) {
               const { error } = await supabaseClient
                 .from("Note to Notespace")
                 .delete()
-                .eq("note_id", notes[index].id)
+                .eq("note_id", noteIdToDelete)
                 .eq("notespace_id", activeNoteSpace.id);
               if (error) {
                 console.log(error);
@@ -842,7 +844,7 @@ export default function Dashboard() {
               const { error } = await supabaseClient
                 .from("Notes")
                 .delete()
-                .eq("id", notes[index].id);
+                .eq("id", noteIdToDelete);
               if (error) {
                 console.log(error);
               }
@@ -852,6 +854,25 @@ export default function Dashboard() {
             const newNotes = [...notes];
             newNotes.splice(index, 1);
             setNotes(newNotes);
+
+            // Delete note from side navigator notes
+            if (
+              sideNavigator === "Note Spaces" &&
+              (!activeNoteSpace?.id ||
+                activeSideNoteSpace?.id === activeNoteSpace?.id)
+            ) {
+              let newSideNoteSpaceNotes = [...sideNoteSpaceNotes];
+              newSideNoteSpaceNotes = newSideNoteSpaceNotes.filter(
+                (note) => note.id !== noteIdToDelete,
+              );
+              setSideNoteSpaceNotes(newSideNoteSpaceNotes);
+            } else if (sideNavigator === "Semantic Search") {
+              let newSideSearchedNotes = [...sideSearchedNotes];
+              newSideSearchedNotes = newSideSearchedNotes.filter(
+                (note) => note.id !== noteIdToDelete,
+              );
+              setSideSearchedNotes(newSideSearchedNotes);
+            }
           }
         }
       }
@@ -907,7 +928,16 @@ export default function Dashboard() {
         });
       }
     };
-  }, [activeNoteSpace, notes, searchedText]);
+  }, [
+    activeNoteSpace,
+    activeSideNoteSpace?.id,
+    notes,
+    recommendedNotes,
+    searchedText,
+    sideNavigator,
+    sideNoteSpaceNotes,
+    sideSearchedNotes,
+  ]);
 
   const debounce = useCallback(
     <T extends (...args: any[]) => void>(func: T, wait: number) => {
@@ -1146,6 +1176,9 @@ export default function Dashboard() {
                                     notespace2.id !== notespace.id,
                                 ),
                               );
+                              if (activeSideNoteSpace?.id == notespace.id) {
+                                setActiveSideNoteSpace(null);
+                              }
                             }
                           }}
                         >
@@ -1281,14 +1314,12 @@ export default function Dashboard() {
                     onBlur={async (e) => {
                       const noteSpaceName = (e.target as HTMLElement).innerText;
 
-                      const { data } = await supabaseClient
-                        .from("Notespaces")
-                        .select("id")
-                        .eq("user_id", session?.user.id)
-                        .eq("name", noteSpaceName);
-
                       // If notespace name already exists, reset the text
-                      if (data && data.length) {
+                      if (
+                        noteSpaces.find(
+                          (notespace) => notespace.name === noteSpaceName,
+                        )
+                      ) {
                         (e.target as HTMLElement).innerText =
                           activeNoteSpace?.name as string;
                         return;
@@ -1331,6 +1362,12 @@ export default function Dashboard() {
                           }
                         }),
                       );
+                      if (activeSideNoteSpace?.id === activeNoteSpace?.id) {
+                        setActiveSideNoteSpace({
+                          id: activeNoteSpace?.id,
+                          name: noteSpaceName,
+                        });
+                      }
                     }}
                   />
                   {searchedText && (
@@ -1386,24 +1423,38 @@ export default function Dashboard() {
                               .insert([{ text: encryptedText, embedding }])
                               .select();
 
-                            if (!error) {
-                              if (activeNoteSpace?.id) {
-                                const { error: error2 } = await supabaseClient
-                                  .from("Note to Notespace")
-                                  .insert([
-                                    {
-                                      notespace_id: activeNoteSpace?.id,
-                                      note_id: data[0].id,
-                                    },
-                                  ]);
-                                if (error2) {
-                                  console.log(error2);
-                                }
-                              }
+                            if (error) {
+                              console.log(error);
+                              return;
+                            }
 
-                              setNotes((notes) => [
+                            setNotes((notes) => [
+                              { id: data[0].id, text: noteText },
+                              ...notes,
+                            ]);
+
+                            if (activeNoteSpace?.id) {
+                              const { error: error2 } = await supabaseClient
+                                .from("Note to Notespace")
+                                .insert([
+                                  {
+                                    notespace_id: activeNoteSpace?.id,
+                                    note_id: data[0].id,
+                                  },
+                                ]);
+                              if (error2) {
+                                console.log(error2);
+                                return;
+                              }
+                            }
+                            if (
+                              activeNoteSpace?.id === activeSideNoteSpace?.id ||
+                              (activeNoteSpace?.id === null &&
+                                activeSideNoteSpace?.id === null)
+                            ) {
+                              setSideNoteSpaceNotes([
                                 { id: data[0].id, text: noteText },
-                                ...notes,
+                                ...sideNoteSpaceNotes,
                               ]);
                             }
                           }
@@ -1461,53 +1512,6 @@ export default function Dashboard() {
                         <Menu offset={0} position="right" key={index}>
                           <MenuTarget>{textComponent}</MenuTarget>
                           <MenuDropdown>
-                            <MenuItem
-                              leftSection={
-                                <IconSearch style={{ width: 16, height: 16 }} />
-                              }
-                              onClick={async (e) => {
-                                setActiveNoteSpace(null);
-                                setSearchedText(note.text);
-                              }}
-                            >
-                              Search for Similar Notes
-                            </MenuItem>
-                            <MenuItem
-                              leftSection={
-                                <IconReportSearch
-                                  style={{ width: 16, height: 16 }}
-                                />
-                              }
-                              onClick={async (e) => {
-                                const textToSearch = note.text;
-
-                                const embeddingResponse = await fetch(
-                                  `/embed?text=${encodeURIComponent(
-                                    textToSearch,
-                                  )}`,
-                                );
-                                const embedding =
-                                  await embeddingResponse.json();
-
-                                const { data, error } =
-                                  await supabaseClient.rpc("match_notes", {
-                                    query_embedding: embedding,
-                                    match_threshold: 1.8,
-                                    match_count: 100,
-                                  });
-
-                                if (error) {
-                                  console.log(error);
-                                  return;
-                                }
-
-                                setSideNavigator("Semantic Search");
-                                setSideSearchTextInputValue(textToSearch);
-                                setSideSearchText(textToSearch);
-                              }}
-                            >
-                              Side Search for Similar Notes
-                            </MenuItem>
                             {activeSideNoteSpace?.name && (
                               <MenuItem
                                 leftSection={
@@ -1560,6 +1564,53 @@ export default function Dashboard() {
                                 Add to {activeSideNoteSpace?.name}
                               </MenuItem>
                             )}
+                            <MenuItem
+                              leftSection={
+                                <IconSearch style={{ width: 16, height: 16 }} />
+                              }
+                              onClick={async (e) => {
+                                setActiveNoteSpace(null);
+                                setSearchedText(note.text);
+                              }}
+                            >
+                              Search for Similar Notes
+                            </MenuItem>
+                            <MenuItem
+                              leftSection={
+                                <IconReportSearch
+                                  style={{ width: 16, height: 16 }}
+                                />
+                              }
+                              onClick={async (e) => {
+                                const textToSearch = note.text;
+
+                                const embeddingResponse = await fetch(
+                                  `/embed?text=${encodeURIComponent(
+                                    textToSearch,
+                                  )}`,
+                                );
+                                const embedding =
+                                  await embeddingResponse.json();
+
+                                const { data, error } =
+                                  await supabaseClient.rpc("match_notes", {
+                                    query_embedding: embedding,
+                                    match_threshold: 1.8,
+                                    match_count: 100,
+                                  });
+
+                                if (error) {
+                                  console.log(error);
+                                  return;
+                                }
+
+                                setSideNavigator("Semantic Search");
+                                setSideSearchTextInputValue(textToSearch);
+                                setSideSearchText(textToSearch);
+                              }}
+                            >
+                              Side Search for Similar Notes
+                            </MenuItem>
                           </MenuDropdown>
                         </Menu>
                       ) : (
