@@ -342,55 +342,70 @@ export default function Dashboard() {
   // Fetch side navigator notes when viewing note spaces
   useEffect(() => {
     const fetchNoteSpaceNotes = async () => {
-      if (session?.user.id) {
-        if (!activeSideNoteSpace?.id) {
-          setSideNoteSpaceNotes([]);
-          return;
-        }
+      if (sideNavigator != "Note Spaces") {
+        return;
+      }
+      if (!session?.user.id) {
+        return;
+      }
 
-        let query = supabaseClient
+      let query;
+
+      if (!activeSideNoteSpace?.id) {
+        query = supabaseClient
+          .from("Notes")
+          .select("id, text")
+          .eq("user_id", session?.user.id);
+      } else {
+        query = supabaseClient
           .from("Note to Notespace")
           .select("id, Notes (id, text)")
           .eq("user_id", session?.user.id)
           .eq("notespace_id", activeSideNoteSpace.id);
+      }
 
-        if (startDate) {
-          const formattedStartDate = startDate.toISOString();
-          query = query.gte("created_at", formattedStartDate);
-        }
+      if (startDate) {
+        const formattedStartDate = startDate.toISOString();
+        query = query.gte("created_at", formattedStartDate);
+      }
 
-        if (endDate) {
-          const formattedEndDate = new Date(
-            new Date(endDate).setDate(endDate.getDate() + 1),
-          ).toISOString();
-          query = query.lte("created_at", formattedEndDate);
-        }
+      if (endDate) {
+        const formattedEndDate = new Date(
+          new Date(endDate).setDate(endDate.getDate() + 1),
+        ).toISOString();
+        query = query.lte("created_at", formattedEndDate);
+      }
 
-        query = query.order("created_at", { ascending: false });
+      query = query.order("created_at", { ascending: false });
 
-        const { data, error } = await query;
+      const { data, error } = await query;
 
-        if (error) {
-          console.log(error);
-          return;
-        }
+      if (error) {
+        console.log(error);
+        return;
+      }
 
-        const notes: { id: any; text: any }[] = data.flatMap((note) => {
+      let notes: { id: any; text: any }[];
+      if (!activeSideNoteSpace?.id) {
+        notes = data as any;
+      } else {
+        notes = data.flatMap((note: any) => {
           return note.Notes;
         });
-        const decryptionResponse = await fetch("/decrypt-notes", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ notes }),
-        });
-        const decryptedNotes = await decryptionResponse.json();
-        setSideNoteSpaceNotes(decryptedNotes);
       }
+
+      const decryptionResponse = await fetch("/decrypt-notes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ notes }),
+      });
+      const decryptedNotes = await decryptionResponse.json();
+      setSideNoteSpaceNotes(decryptedNotes);
     };
     fetchNoteSpaceNotes();
-  }, [activeSideNoteSpace, session, startDate, endDate]);
+  }, [sideNavigator, activeSideNoteSpace, session, startDate, endDate]);
 
   // Fetch side navigator recommended notes
   useEffect(() => {
@@ -459,6 +474,7 @@ export default function Dashboard() {
     }
     if (sideNavigator != "Semantic Search") {
       setSideSearchTextInputValue("");
+      setSideSearchText("");
       setSideSearchedNotes([]);
     }
     if (sideNavigator != "Note Spaces") {
@@ -1183,10 +1199,13 @@ export default function Dashboard() {
                     .select();
 
                   if (!error) {
-                    setActiveNoteSpace({ id: data[0].id, name: data[0].name });
+                    setActiveNoteSpace({
+                      id: data[0].id,
+                      name: newNoteSpaceName,
+                    });
                     setNoteSpaces([
                       ...noteSpaces,
-                      { id: data[0].id, name: data[0].name },
+                      { id: data[0].id, name: newNoteSpaceName },
                     ]);
                   } else {
                     console.log(error);
@@ -1484,6 +1503,7 @@ export default function Dashboard() {
 
                                 setSideNavigator("Semantic Search");
                                 setSideSearchTextInputValue(textToSearch);
+                                setSideSearchText(textToSearch);
                               }}
                             >
                               Side Search for Similar Notes
@@ -1631,6 +1651,7 @@ export default function Dashboard() {
                           <IconEdit size={16} />
                         )
                       }
+                      fw="400"
                       variant="outline"
                       w={110}
                       className="outline-button"
@@ -1667,9 +1688,11 @@ export default function Dashboard() {
                         className="custom-scrollbar"
                       >
                         <Select
-                          placeholder="Select a Note Space to Add Notes"
-                          data={noteSpaces.map((notespace) => notespace.name)}
-                          value={activeSideNoteSpace?.name}
+                          data={[
+                            "All Notes",
+                            ...noteSpaces.map((notespace) => notespace.name),
+                          ]}
+                          value={activeSideNoteSpace?.name || "All Notes"}
                           leftSection={<IconClipboardText size={16} />}
                           variant="unstyled"
                           onChange={(value) => {
@@ -1680,94 +1703,133 @@ export default function Dashboard() {
                               )?.id,
                             });
                           }}
-                          clearable
                         />
-                        {/* TODO: Refactor and remove Menu when there is no active note space */}
-                        {activeSideNoteSpace?.id && (
-                          <Stack my={8} mx={8}>
-                            {sideNoteSpaceNotes.length === 0 && (
-                              <Text fz="sm" style={{ cursor: "default" }}>
-                                There are no notes in this note space.
-                              </Text>
-                            )}
-                            {sideNoteSpaceNotes.map((note, index) => (
-                              <Menu key={index} position="left">
-                                <MenuTarget>
-                                  <Text
-                                    fz="sm"
-                                    className={
-                                      activeNoteSpace ? "text-box-view" : ""
+                        <Stack my={8} mx={8}>
+                          {sideNoteSpaceNotes.length === 0 && (
+                            <Text fz="sm" style={{ cursor: "default" }}>
+                              There are no notes in this note space.
+                            </Text>
+                          )}
+                          {sideNoteSpaceNotes.map((note, index) => (
+                            <Menu key={index} position="left">
+                              <MenuTarget>
+                                <Text
+                                  fz="sm"
+                                  className={"text-box-view"}
+                                  style={{
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  {note.text}
+                                </Text>
+                              </MenuTarget>
+
+                              <MenuDropdown>
+                                {activeNoteSpace && (
+                                  <MenuItem
+                                    leftSection={
+                                      <IconTextPlus
+                                        style={{ width: 16, height: 16 }}
+                                      />
                                     }
-                                    style={{
-                                      cursor: activeNoteSpace
-                                        ? "pointer"
-                                        : "default",
+                                    onClick={async () => {
+                                      // Check if note is already in notespace
+                                      const {
+                                        data: existingData,
+                                        error: existingError,
+                                      } = await supabaseClient
+                                        .from("Note to Notespace")
+                                        .select("id")
+                                        .eq("notespace_id", activeNoteSpace?.id)
+                                        .eq("note_id", note.id);
+
+                                      if (existingError) {
+                                        console.log(existingError);
+                                        return;
+                                      }
+
+                                      if (existingData?.length) {
+                                        openAlert();
+                                        return;
+                                      }
+
+                                      // Insert Note into Notespace
+                                      const { error } = await supabaseClient
+                                        .from("Note to Notespace")
+                                        .insert([
+                                          {
+                                            notespace_id: activeNoteSpace?.id,
+                                            note_id: note.id,
+                                          },
+                                        ]);
+
+                                      if (error) {
+                                        console.log(error);
+                                        return;
+                                      }
+
+                                      setNotes([
+                                        { id: note.id, text: note.text },
+                                        ...notes,
+                                      ]);
                                     }}
                                   >
-                                    {note.text}
-                                  </Text>
-                                </MenuTarget>
-                                {activeNoteSpace && (
-                                  <MenuDropdown>
-                                    <MenuItem
-                                      leftSection={
-                                        <IconTextPlus
-                                          style={{ width: 16, height: 16 }}
-                                        />
-                                      }
-                                      onClick={async () => {
-                                        // Check if note is already in notespace
-                                        const {
-                                          data: existingData,
-                                          error: existingError,
-                                        } = await supabaseClient
-                                          .from("Note to Notespace")
-                                          .select("id")
-                                          .eq(
-                                            "notespace_id",
-                                            activeNoteSpace?.id,
-                                          )
-                                          .eq("note_id", note.id);
-
-                                        if (existingError) {
-                                          console.log(existingError);
-                                          return;
-                                        }
-
-                                        if (existingData?.length) {
-                                          openAlert();
-                                          return;
-                                        }
-
-                                        // Insert Note into Notespace
-                                        const { error } = await supabaseClient
-                                          .from("Note to Notespace")
-                                          .insert([
-                                            {
-                                              notespace_id: activeNoteSpace?.id,
-                                              note_id: note.id,
-                                            },
-                                          ]);
-
-                                        if (error) {
-                                          console.log(error);
-                                          return;
-                                        }
-
-                                        setNotes([
-                                          { id: note.id, text: note.text },
-                                          ...notes,
-                                        ]);
-                                      }}
-                                    >
-                                      Add to {activeNoteSpace?.name}
-                                    </MenuItem>
-                                  </MenuDropdown>
+                                    Add to {activeNoteSpace?.name}
+                                  </MenuItem>
                                 )}
-                              </Menu>
-                            ))}
-                          </Stack>
-                        )}
+                                <MenuItem
+                                  leftSection={
+                                    <IconSearch
+                                      style={{ width: 16, height: 16 }}
+                                    />
+                                  }
+                                  onClick={async (e) => {
+                                    setActiveNoteSpace(null);
+                                    setSearchedText(note.text);
+                                  }}
+                                >
+                                  Search for Similar Notes
+                                </MenuItem>
+                                <MenuItem
+                                  leftSection={
+                                    <IconReportSearch
+                                      style={{ width: 16, height: 16 }}
+                                    />
+                                  }
+                                  onClick={async (e) => {
+                                    const textToSearch = note.text;
+
+                                    const embeddingResponse = await fetch(
+                                      `/embed?text=${encodeURIComponent(
+                                        textToSearch,
+                                      )}`,
+                                    );
+                                    const embedding =
+                                      await embeddingResponse.json();
+
+                                    const { data, error } =
+                                      await supabaseClient.rpc("match_notes", {
+                                        query_embedding: embedding,
+                                        match_threshold: 1.8,
+                                        match_count: 100,
+                                      });
+
+                                    if (error) {
+                                      console.log(error);
+                                      return;
+                                    }
+
+                                    setSideNavigator("Semantic Search");
+                                    setSideSearchTextInputValue(textToSearch);
+                                    setSideSearchText(textToSearch);
+                                  }}
+                                >
+                                  Side Search for Similar Notes
+                                </MenuItem>
+                              </MenuDropdown>
+                            </Menu>
+                          ))}
+                        </Stack>
                       </Paper>
                     )}{" "}
                     {sideNavigator == "Recommended Notes" && (
@@ -1792,20 +1854,17 @@ export default function Dashboard() {
                                 <MenuTarget>
                                   <Text
                                     fz="sm"
-                                    className={
-                                      activeNoteSpace ? "text-box-view" : ""
-                                    }
+                                    className={"text-box-view"}
                                     style={{
-                                      cursor: activeNoteSpace
-                                        ? "pointer"
-                                        : "default",
+                                      cursor: "pointer",
                                     }}
                                   >
                                     {note.text}
                                   </Text>
                                 </MenuTarget>
-                                {activeNoteSpace && (
-                                  <MenuDropdown>
+
+                                <MenuDropdown>
+                                  {activeNoteSpace && (
                                     <MenuItem
                                       leftSection={
                                         <IconTextPlus
@@ -1859,8 +1918,60 @@ export default function Dashboard() {
                                     >
                                       Add to {activeNoteSpace?.name}
                                     </MenuItem>
-                                  </MenuDropdown>
-                                )}
+                                  )}
+                                  <MenuItem
+                                    leftSection={
+                                      <IconSearch
+                                        style={{ width: 16, height: 16 }}
+                                      />
+                                    }
+                                    onClick={async (e) => {
+                                      setActiveNoteSpace(null);
+                                      setSearchedText(note.text);
+                                    }}
+                                  >
+                                    Search for Similar Notes
+                                  </MenuItem>
+                                  <MenuItem
+                                    leftSection={
+                                      <IconReportSearch
+                                        style={{ width: 16, height: 16 }}
+                                      />
+                                    }
+                                    onClick={async (e) => {
+                                      const textToSearch = note.text;
+
+                                      const embeddingResponse = await fetch(
+                                        `/embed?text=${encodeURIComponent(
+                                          textToSearch,
+                                        )}`,
+                                      );
+                                      const embedding =
+                                        await embeddingResponse.json();
+
+                                      const { data, error } =
+                                        await supabaseClient.rpc(
+                                          "match_notes",
+                                          {
+                                            query_embedding: embedding,
+                                            match_threshold: 1.8,
+                                            match_count: 100,
+                                          },
+                                        );
+
+                                      if (error) {
+                                        console.log(error);
+                                        return;
+                                      }
+
+                                      setSideNavigator("Semantic Search");
+                                      setSideSearchTextInputValue(textToSearch);
+                                      setSideSearchText(textToSearch);
+                                    }}
+                                  >
+                                    Side Search for Similar Notes
+                                  </MenuItem>
+                                </MenuDropdown>
                               </Menu>
                             ))}
                         </Stack>
@@ -1903,8 +2014,7 @@ export default function Dashboard() {
                               }
                             }}
                           />
-
-                          {sideSearchedNotes.length > 0 && (
+                          {sideSearchText && (
                             <>
                               <Divider mt={0} mb={16} mx={2} />
                               <Flex>
@@ -1917,22 +2027,17 @@ export default function Dashboard() {
                                       <MenuTarget>
                                         <Text
                                           fz="sm"
-                                          className={
-                                            activeNoteSpace
-                                              ? "text-box-view"
-                                              : ""
-                                          }
+                                          className={"text-box-view"}
                                           style={{
-                                            cursor: activeNoteSpace
-                                              ? "pointer"
-                                              : "default",
+                                            cursor: "pointer",
                                           }}
                                         >
                                           {note.text}
                                         </Text>
                                       </MenuTarget>
-                                      {activeNoteSpace && (
-                                        <MenuDropdown>
+
+                                      <MenuDropdown>
+                                        {activeNoteSpace && (
                                           <MenuItem
                                             leftSection={
                                               <IconTextPlus
@@ -1994,8 +2099,63 @@ export default function Dashboard() {
                                           >
                                             Add to {activeNoteSpace?.name}
                                           </MenuItem>
-                                        </MenuDropdown>
-                                      )}
+                                        )}
+                                        <MenuItem
+                                          leftSection={
+                                            <IconSearch
+                                              style={{ width: 16, height: 16 }}
+                                            />
+                                          }
+                                          onClick={async (e) => {
+                                            setActiveNoteSpace(null);
+                                            setSearchedText(note.text);
+                                          }}
+                                        >
+                                          Search for Similar Notes
+                                        </MenuItem>
+                                        <MenuItem
+                                          leftSection={
+                                            <IconReportSearch
+                                              style={{ width: 16, height: 16 }}
+                                            />
+                                          }
+                                          onClick={async (e) => {
+                                            const textToSearch = note.text;
+
+                                            const embeddingResponse =
+                                              await fetch(
+                                                `/embed?text=${encodeURIComponent(
+                                                  textToSearch,
+                                                )}`,
+                                              );
+                                            const embedding =
+                                              await embeddingResponse.json();
+
+                                            const { data, error } =
+                                              await supabaseClient.rpc(
+                                                "match_notes",
+                                                {
+                                                  query_embedding: embedding,
+                                                  match_threshold: 1.8,
+                                                  match_count: 100,
+                                                },
+                                              );
+
+                                            if (error) {
+                                              console.log(error);
+                                              return;
+                                            }
+
+                                            setSideNavigator("Semantic Search");
+                                            setSideSearchTextInputValue(
+                                              textToSearch,
+                                            );
+                                            setSideSearchText(textToSearch);
+                                          }}
+                                        >
+                                          Side Search for Similar Notes
+                                        </MenuItem>
+                                      </MenuDropdown>
                                     </Menu>
                                   ))}
                                 </Stack>
