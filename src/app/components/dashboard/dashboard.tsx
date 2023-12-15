@@ -110,9 +110,7 @@ export default function Dashboard() {
   >([]);
 
   // Dashboard refs
-  const editableNoteRef = useRef<HTMLDivElement>(null);
-  // const caretPositionRef = useRef<number | null>(null);
-  // const notesRef = useRef(notes);
+  const editableNoteRef = useRef<HTMLDivElement>(null);  
   const eventListenersRef = useRef<{
     [key: string]: (e: KeyboardEvent) => void;
   }>({});
@@ -120,11 +118,6 @@ export default function Dashboard() {
   // Alert disclosure for notifying user of duplicate note creation
   const [alertOpened, { open: openAlert, close: closeAlert }] =
     useDisclosure(false);
-
-  // Update notes ref every time notes changes
-  // useEffect(() => {
-  //   notesRef.current = notes;
-  // }, [notes]);
 
   // Set session after fetching the router data
   useEffect(() => {
