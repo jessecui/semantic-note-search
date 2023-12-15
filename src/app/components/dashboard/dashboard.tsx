@@ -109,8 +109,11 @@ export default function Dashboard() {
     { id: any; text: string }[]
   >([]);
 
+  // Main notes loaded state
+  const [notesLoaded, setNotesLoaded] = useState<boolean>(true);
+
   // Dashboard refs
-  const editableNoteRef = useRef<HTMLDivElement>(null);  
+  const editableNoteRef = useRef<HTMLDivElement>(null);
   const eventListenersRef = useRef<{
     [key: string]: (e: KeyboardEvent) => void;
   }>({});
@@ -153,8 +156,8 @@ export default function Dashboard() {
             },
             body: JSON.stringify({ noteSpaces: data }),
           });
-          const decryptedNotes = await decryptionResponse.json();
-          setNoteSpaces(decryptedNotes);
+          const decryptedNoteSpaces = await decryptionResponse.json();
+          setNoteSpaces(decryptedNoteSpaces);
         }
       }
     };
@@ -197,6 +200,7 @@ export default function Dashboard() {
           });
           const decryptedNotes = await decryptionResponse.json();
           setNotes(decryptedNotes);
+          setNotesLoaded(true);
         }
       }
     };
@@ -239,6 +243,7 @@ export default function Dashboard() {
           });
           const decryptedNotes = await decryptionResponse.json();
           setNotes(decryptedNotes);
+          setNotesLoaded(true);
         }
       }
     };
@@ -402,6 +407,9 @@ export default function Dashboard() {
   // Fetch side navigator recommended notes
   useEffect(() => {
     const fetchRecommendedNotes = async () => {
+      if (!notesLoaded) {
+        return;
+      }
       if (session?.user.id) {
         if (!activeNoteSpace?.id) {
           setRecommendedNotes([]);
@@ -1025,7 +1033,7 @@ export default function Dashboard() {
                       cursor: "pointer",
                     }}
                     onClick={() => {
-                      setRecommendedNotes([]);
+                      setNotesLoaded(false);
                       setSearchedText(null);
                       setActiveNoteSpace(notespace);
                     }}
