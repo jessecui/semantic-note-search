@@ -814,6 +814,15 @@ export default function Dashboard() {
 
       if (event.key === "Enter") {
         event.preventDefault();
+
+        // Focus on next element
+        if (index >= 0 && index < notes.length - 1) {
+          const nextElement = document.getElementById(
+            `note-${index + 1}`,
+          ) as HTMLElement;
+          nextElement.focus();
+          setCaretToStartPosition(nextElement);
+        }
       }
 
       if (event.key === "Backspace") {
