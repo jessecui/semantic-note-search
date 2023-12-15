@@ -465,7 +465,15 @@ export default function Dashboard() {
       }
     };
     fetchRecommendedNotes();
-  }, [session, activeNoteSpace, notes, startDate, endDate, sideNavigator]);
+  }, [
+    session,
+    activeNoteSpace,
+    notes,
+    startDate,
+    endDate,
+    sideNavigator,
+    notesLoaded,
+  ]);
 
   // Reset side navigator state when switching between navigators
   useEffect(() => {
