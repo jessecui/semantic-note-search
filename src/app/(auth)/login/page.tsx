@@ -33,8 +33,12 @@ export default function LogIn() {
       password,
     });
 
-    if (error) form.setErrors({ email: " ", password: "Email and password not found for the account" });
-    else router.push("/dashboard");    
+    if (error)
+      form.setErrors({
+        email: " ",
+        password: "Email and password not found for the account",
+      });
+    else router.push("/dashboard");
   };
 
   const form = useForm({
@@ -90,7 +94,7 @@ export default function LogIn() {
             </Center>
           </form>
           <Divider my={16} />
-          <Text ta="center">
+          <Box ta="center">
             Don&apos;t have an account?{" "}
             <Link href="/signup" style={{ color: "#0395FF" }}>
               Sign Up
@@ -101,7 +105,7 @@ export default function LogIn() {
                 Reset Password
               </Link>
             </Text>
-          </Text>
+          </Box>
         </Box>
       </Container>
     </main>

@@ -15,8 +15,26 @@ import {
 } from "@mantine/core";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
+import supabaseClient from "../supabase/supabaseClient";
 
 export default function Home() {
+  const router = useRouter();
+  // Set session after fetching the router data
+  useEffect(() => {
+    console.log(router);
+    const fetchSession = async () => {
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error) console.log(error);
+      if (data.session) {
+        router.push("/dashboard");
+      }
+    };
+    fetchSession();
+  }, [router]);
+
   return (
     <main>
       <Container size="md">

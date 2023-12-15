@@ -41,7 +41,6 @@ import {
   IconInfoCircle,
   IconLogout,
   IconMoon,
-  IconPlaylistX,
   IconPlus,
   IconReportSearch,
   IconSearch,
