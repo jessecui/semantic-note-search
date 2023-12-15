@@ -38,7 +38,7 @@ export default function LogIn() {
         email: " ",
         password: "Email and password not found for the account",
       });
-    else router.push("/dashboard");
+    else router.push("/");
   };
 
   const form = useForm({

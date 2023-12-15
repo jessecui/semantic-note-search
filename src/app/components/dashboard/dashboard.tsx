@@ -55,7 +55,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import supabaseClient from "../../supabase/supabaseClient";
+import supabaseClient from "../../../supabase/supabaseClient";
 import "./dashboard.css";
 
 export default function Dashboard() {
@@ -1017,7 +1017,7 @@ export default function Dashboard() {
   }, [notes]); // Dependency on notes state to trigger after update
 
   return (
-    <>
+    <main>
       <AppShell navbar={{ width: 240, breakpoint: "xs" }} padding="md">
         <AppShellNavbar p="md" className="navbar">
           <NavLink
@@ -1078,8 +1078,7 @@ export default function Dashboard() {
               leftSection={<IconLogout size={16} />}
               className="navlink"
               onClick={async () => {
-                await supabaseClient.auth.signOut();
-                router.push("/");
+                await supabaseClient.auth.signOut();                                
               }}
               label={<Text size="sm">Log Out</Text>}
             />
@@ -2189,6 +2188,6 @@ export default function Dashboard() {
           The note you are trying to add is already in the current notespace.
         </Alert>
       </Modal>
-    </>
+    </main>
   );
 }

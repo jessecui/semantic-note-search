@@ -40,20 +40,19 @@ export default function UpdatePassword() {
   const publicKey =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhb3pwZ3pnd2FwdnBvbXNmdWlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDAwOTE1NTQsImV4cCI6MjAxNTY2NzU1NH0.3JTgWckpK194wc3hht_KnWev_Rqe4C8Mdpg9ALM0JKo";
 
+  useEffect(() => {
+    const supabaseClient = createClient(url, publicKey);
 
-    useEffect(() => {
-      const supabaseClient = createClient(url, publicKey);
-  
-      const fetchSession = async () => {
-        const { data, error } = await supabaseClient.auth.getSession();
-        if (error) console.log(error);
-        else setSession(data.session);
-        if (!data.session) {
-          router.push("/");
-        }
-      };
-      fetchSession();
-    }, [router]);
+    const fetchSession = async () => {
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error) console.log(error);
+      else setSession(data.session);
+      if (!data.session) {
+        router.push("/");
+      }
+    };
+    fetchSession();
+  }, [router]);
 
   return (
     <main>
@@ -74,18 +73,22 @@ export default function UpdatePassword() {
             Update Password
           </Title>
           <Text ta="center" my={16}>
-            Please provide your new password below for the email <Text span fw="bold">{session?.user.email}</Text>.
+            Please provide your new password below for the email{" "}
+            <Text span fw="bold">
+              {session?.user.email}
+            </Text>
+            .
           </Text>
           <form
-            onSubmit={form.onSubmit(async (values) => {              
+            onSubmit={form.onSubmit(async (values) => {
               const supabase = createClient(url, publicKey);
 
-              const { data, error } = await supabase.auth.updateUser({ password: values.password })
+              const { data, error } = await supabase.auth.updateUser({
+                password: values.password,
+              });
 
               if (error === null) {
-                router.push(
-                  '/dashboard',
-                );
+                router.push("/");
               } else {
                 form.setErrors({
                   email: "There was a problem updating the password",
@@ -93,7 +96,7 @@ export default function UpdatePassword() {
               }
             })}
           >
-         <PasswordInput
+            <PasswordInput
               label="Password"
               placeholder="********"
               {...form.getInputProps("password")}

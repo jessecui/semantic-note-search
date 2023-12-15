@@ -29,7 +29,7 @@ const signUpUser = async (email: string, password: string) => {
     email,
     password,
     options: {
-      emailRedirectTo: "http://localhost:3000/dashboard",
+      emailRedirectTo: "http://localhost:3000/",
     },
   });
 
@@ -80,8 +80,7 @@ export default function SignUp() {
                 values.email,
                 values.password,
               );
-              if (responseError === null) {
-                console.log("success");
+              if (responseError === null) {                
                 router.push(
                   `/verify-email?email=${encodeURIComponent(values.email)}`,
                 );
