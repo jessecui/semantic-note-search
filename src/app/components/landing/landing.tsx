@@ -20,24 +20,14 @@ import {
 import { IconMoon, IconSun } from "@tabler/icons-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef } from "react";
 
 import Logo from "../logo/logo";
 
 export default function Landing() {
-  const { setColorScheme, toggleColorScheme } = useMantineColorScheme();
+  const {toggleColorScheme } = useMantineColorScheme();
   const computedColorScheme = useComputedColorScheme("light", {
     getInitialValueInEffect: true,
   });
-
-  const initialColorSet = useRef(false);
-
-  useEffect(() => {
-    if (!initialColorSet.current) {
-      initialColorSet.current = true;
-      setColorScheme("auto");
-    }
-  }, [setColorScheme]);
 
   return (
     <main>
