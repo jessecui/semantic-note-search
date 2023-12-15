@@ -5,20 +5,20 @@ import {
   Button,
   Center,
   Container,
-  Divider,
   Flex,
   PasswordInput,
-  Stack,
   Text,
-  TextInput,
   Title,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
-import { Session, createClient } from "@supabase/supabase-js";
+import { Session } from "@supabase/supabase-js";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+
+import supabaseClient from "../../../supabase/supabaseClient";
+import Logo from "../../components/logo/logo";
 
 export default function UpdatePassword() {
   const router = useRouter();
@@ -36,13 +36,7 @@ export default function UpdatePassword() {
   });
   const [session, setSession] = useState<Session | null>(null);
 
-  const url = "https://faozpgzgwapvpomsfuig.supabase.co";
-  const publicKey =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhb3pwZ3pnd2FwdnBvbXNmdWlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDAwOTE1NTQsImV4cCI6MjAxNTY2NzU1NH0.3JTgWckpK194wc3hht_KnWev_Rqe4C8Mdpg9ALM0JKo";
-
-  useEffect(() => {
-    const supabaseClient = createClient(url, publicKey);
-
+  useEffect(() => {    
     const fetchSession = async () => {
       const { data, error } = await supabaseClient.auth.getSession();
       if (error) console.log(error);
@@ -59,13 +53,7 @@ export default function UpdatePassword() {
       <Container>
         <Flex justify="space-between" align="center" mih={60}>
           <Link href="/" style={{ display: "flex" }}>
-            <Image
-              src="/crux-logo.png"
-              alt="Crux Logo"
-              width={90}
-              height={30}
-              priority
-            />
+          <Logo />
           </Link>
         </Flex>
         <Box maw={340} mx="auto">
@@ -81,9 +69,7 @@ export default function UpdatePassword() {
           </Text>
           <form
             onSubmit={form.onSubmit(async (values) => {
-              const supabase = createClient(url, publicKey);
-
-              const { data, error } = await supabase.auth.updateUser({
+              const { error } = await supabaseClient.auth.updateUser({
                 password: values.password,
               });
 

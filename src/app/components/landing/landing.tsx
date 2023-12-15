@@ -10,25 +10,41 @@ import {
   Grid,
   GridCol,
   Group,
+  Stack,
+  Switch,
   Text,
   Title,
+  useComputedColorScheme,
+  useMantineColorScheme,
 } from "@mantine/core";
+import { IconMoon, IconSun } from "@tabler/icons-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useRef } from "react";
+
+import Logo from "../logo/logo";
 
 export default function Landing() {
+  const { setColorScheme, toggleColorScheme } = useMantineColorScheme();
+  const computedColorScheme = useComputedColorScheme("light", {
+    getInitialValueInEffect: true,
+  });
+
+  const initialColorSet = useRef(false);
+
+  useEffect(() => {
+    if (!initialColorSet.current) {
+      initialColorSet.current = true;
+      setColorScheme("auto");
+    }
+  }, [setColorScheme]);
+
   return (
     <main>
       <Container size="md">
         <nav>
           <Flex justify="space-between" align="center" mih={60}>
-            <Image
-              src="/crux-logo.png"
-              alt="Crux Logo"
-              width={90}
-              height={30}
-              priority
-            />
+            <Logo />
             <Group>
               <Link href="/login" passHref>
                 <Button variant="outline">Log In</Button>
@@ -60,15 +76,21 @@ export default function Landing() {
               <Button>Get started</Button>
             </Link>
           </GridCol>
-          <GridCol span={5}>
-            <Image
-              src="/notes-playground-art.png"
-              alt="Notes Playground Art"
-              width={372}
-              height={372}
-              style={{ objectFit: "contain" }}
-              priority
-            />
+          <GridCol span={5} my={8}>
+            <Box
+              w={372}
+              h={372}
+              style={{ borderRadius: 16, overflow: "hidden" }}
+            >
+              <Image
+                src="/notes-playground-art.png"
+                alt="Notes Playground Art"
+                width={372}
+                height={372}
+                style={{ objectFit: "contain" }}
+                priority
+              />
+            </Box>
           </GridCol>
         </Grid>
         <Divider my="sm" />
@@ -150,9 +172,17 @@ export default function Landing() {
           </GridCol>
         </Grid>
         <Divider />
-        <Box py={16}>
-          <Text ta="center">©2023 Crux Notes</Text>
-        </Box>
+        <Stack align="center" py={16} gap={8}>
+          <Text>©2023 Crux Notes</Text>
+          <Switch
+            size="md"
+            color="black"
+            onLabel={<IconSun size={16} />}
+            offLabel={<IconMoon size={16} />}
+            checked={computedColorScheme === "light"}
+            onChange={() => toggleColorScheme()}
+          />
+        </Stack>
       </Container>
     </main>
   );

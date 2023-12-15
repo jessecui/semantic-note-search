@@ -17,6 +17,10 @@ import { createClient } from "@supabase/supabase-js";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
+import supabaseClient from "../../../supabase/supabaseClient";
+import Logo from "../../components/logo/logo";
 
 export default function LogIn() {
   const router = useRouter();
@@ -55,18 +59,24 @@ export default function LogIn() {
     },
   });
 
+  // Redirect user if already logged in
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error) console.log(error);
+      if (data.session) {
+        router.push("/");
+      }
+    };
+    fetchUser();
+  }, [router]);
+
   return (
     <main>
       <Container>
         <Flex justify="space-between" align="center" mih={60}>
           <Link href="/" style={{ display: "flex" }}>
-            <Image
-              src="/crux-logo.png"
-              alt="Crux Logo"
-              width={90}
-              height={30}
-              priority
-            />
+            <Logo />
           </Link>
         </Flex>
         <Box maw={340} mx="auto">

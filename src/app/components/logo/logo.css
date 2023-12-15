@@ -1,0 +1,15 @@
+[data-mantine-color-scheme="light"] .dark-only {
+  display: none;
+}
+
+[data-mantine-color-scheme="dark"] .dark-only {
+  display: block;
+}
+
+[data-mantine-color-scheme="light"] .light-only {
+  display: block;
+}
+
+[data-mantine-color-scheme="dark"] .light-only {
+  display: none;
+}
