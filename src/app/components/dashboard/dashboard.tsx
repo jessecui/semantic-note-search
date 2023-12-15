@@ -53,7 +53,7 @@ import {
 } from "@tabler/icons-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import supabaseClient from "../../../supabase/supabaseClient";
 import "./dashboard.css";
@@ -111,8 +111,8 @@ export default function Dashboard() {
 
   // Dashboard refs
   const editableNoteRef = useRef<HTMLDivElement>(null);
-  const caretPositionRef = useRef<number | null>(null);
-  const notesRef = useRef(notes);
+  // const caretPositionRef = useRef<number | null>(null);
+  // const notesRef = useRef(notes);
   const eventListenersRef = useRef<{
     [key: string]: (e: KeyboardEvent) => void;
   }>({});
@@ -122,9 +122,9 @@ export default function Dashboard() {
     useDisclosure(false);
 
   // Update notes ref every time notes changes
-  useEffect(() => {
-    notesRef.current = notes;
-  }, [notes]);
+  // useEffect(() => {
+  //   notesRef.current = notes;
+  // }, [notes]);
 
   // Set session after fetching the router data
   useEffect(() => {
@@ -336,7 +336,7 @@ export default function Dashboard() {
       setSideSearchedNotes(decryptedNotes);
     };
     fetchSideSearchedNotes();
-  }, [sideSearchText, startDate, endDate]);
+  }, [sideSearchText, startDate, endDate, notes]);
 
   // Fetch side navigator notes when viewing note spaces
   useEffect(() => {
@@ -404,7 +404,7 @@ export default function Dashboard() {
       setSideNoteSpaceNotes(decryptedNotes);
     };
     fetchNoteSpaceNotes();
-  }, [sideNavigator, activeSideNoteSpace, session, startDate, endDate]);
+  }, [sideNavigator, activeSideNoteSpace, session, startDate, endDate, notes]);
 
   // Fetch side navigator recommended notes
   useEffect(() => {
@@ -824,7 +824,6 @@ export default function Dashboard() {
             }
             if (previousElement) {
               previousElement.focus();
-              caretPositionRef.current = previousElement.textContent!.length;
             }
 
             const noteIdToDelete = notes[index].id;
@@ -853,25 +852,6 @@ export default function Dashboard() {
             const newNotes = [...notes];
             newNotes.splice(index, 1);
             setNotes(newNotes);
-
-            // Delete note from side navigator notes
-            if (
-              sideNavigator === "Note Spaces" &&
-              (!activeNoteSpace?.id ||
-                activeSideNoteSpace?.id === activeNoteSpace?.id)
-            ) {
-              let newSideNoteSpaceNotes = [...sideNoteSpaceNotes];
-              newSideNoteSpaceNotes = newSideNoteSpaceNotes.filter(
-                (note) => note.id !== noteIdToDelete,
-              );
-              setSideNoteSpaceNotes(newSideNoteSpaceNotes);
-            } else if (sideNavigator === "Semantic Search") {
-              let newSideSearchedNotes = [...sideSearchedNotes];
-              newSideSearchedNotes = newSideSearchedNotes.filter(
-                (note) => note.id !== noteIdToDelete,
-              );
-              setSideSearchedNotes(newSideSearchedNotes);
-            }
           }
         }
       }
@@ -938,84 +918,6 @@ export default function Dashboard() {
     sideSearchedNotes,
   ]);
 
-  const debounce = useCallback(
-    <T extends (...args: any[]) => void>(func: T, wait: number) => {
-      let timeout: NodeJS.Timeout | undefined;
-
-      return function executedFunction(...args: any[]) {
-        const later = () => {
-          clearTimeout(timeout);
-          func(...args);
-        };
-
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-      };
-    },
-    [],
-  );
-
-  const debouncedUpdateNote = useRef(
-    debounce(async (index, noteId, newNoteText) => {
-      if (newNoteText === "") {
-        return;
-      }
-      const newNotes = [...notesRef.current];
-      newNotes[index] = { id: noteId, text: newNoteText };
-
-      const { data } = await supabaseClient
-        .from("Notes")
-        .select("id")
-        .eq("id", noteId);
-
-      if (data && data.length) {
-        const encryptResponse = await fetch(
-          `/encrypt?text=${encodeURIComponent(newNoteText)}`,
-        );
-
-        const encryptedText = (await encryptResponse.json()).encryption;
-
-        let embedding = null;
-        const embeddingResponse = await fetch(
-          `/embed?text=${encodeURIComponent(newNoteText)}`,
-        );
-        embedding = await embeddingResponse.json();
-
-        const { error } = await supabaseClient
-          .from("Notes")
-          .update({ text: encryptedText, embedding })
-          .eq("id", noteId);
-
-        if (!error) {
-          setNotes(newNotes);
-        }
-      }
-    }, 1000),
-  ).current;
-
-  // Update caret position after note state gets changed on debounce
-  useEffect(() => {
-    if (caretPositionRef.current !== null) {
-      const activeElement = document.activeElement;
-      if (
-        activeElement &&
-        (activeElement as HTMLElement).contentEditable === "true"
-      ) {
-        const range = document.createRange();
-        const selection = window.getSelection();
-        if (!activeElement.firstChild) {
-          range.setStart(activeElement, 0);
-        } else {
-          range.setStart(activeElement.firstChild, caretPositionRef.current);
-        }
-
-        range.collapse(true);
-        selection!.removeAllRanges();
-        selection!.addRange(range);
-      }
-    }
-  }, [notes]); // Dependency on notes state to trigger after update
-
   return (
     <main>
       <AppShell navbar={{ width: 240, breakpoint: "xs" }} padding="md">
@@ -1078,7 +980,7 @@ export default function Dashboard() {
               leftSection={<IconLogout size={16} />}
               className="navlink"
               onClick={async () => {
-                await supabaseClient.auth.signOut();                                
+                await supabaseClient.auth.signOut();
               }}
               label={<Text size="sm">Log Out</Text>}
             />
@@ -1291,11 +1193,6 @@ export default function Dashboard() {
                     contentEditable={
                       noteMode === "edit" && activeNoteSpace != null
                     }
-                    dangerouslySetInnerHTML={{
-                      __html: activeNoteSpace
-                        ? activeNoteSpace.name
-                        : "All Notes",
-                    }}
                     className="text-box-edit"
                     style={{
                       cursor:
@@ -1367,7 +1264,10 @@ export default function Dashboard() {
                         });
                       }
                     }}
-                  />
+                    suppressContentEditableWarning
+                  >
+                    {activeNoteSpace ? activeNoteSpace.name : "All Notes"}
+                  </Text>
                   {searchedText && (
                     <Box>
                       <Text
@@ -1445,16 +1345,6 @@ export default function Dashboard() {
                                 return;
                               }
                             }
-                            if (
-                              activeNoteSpace?.id === activeSideNoteSpace?.id ||
-                              (activeNoteSpace?.id === null &&
-                                activeSideNoteSpace?.id === null)
-                            ) {
-                              setSideNoteSpaceNotes([
-                                { id: data[0].id, text: noteText },
-                                ...sideNoteSpaceNotes,
-                              ]);
-                            }
                           }
                         }
                       }}
@@ -1481,7 +1371,6 @@ export default function Dashboard() {
                         <Text
                           id={`note-${index}`}
                           contentEditable={noteMode === "edit"}
-                          dangerouslySetInnerHTML={{ __html: note.text }}
                           className={
                             noteMode === "edit"
                               ? "text-box-edit"
@@ -1490,21 +1379,58 @@ export default function Dashboard() {
                           style={{
                             cursor: noteMode === "view" ? "pointer" : "text",
                           }}
-                          onInput={(e) => {
-                            const selection = window.getSelection();
-                            if (selection!.rangeCount > 0) {
-                              const range = selection!.getRangeAt(0);
-                              const start = range.startOffset;
+                          onBlur={async (e) => {
+                            const newNoteText = (e.target as HTMLElement)
+                              .innerText;
 
-                              // Store the caret position in a ref
-                              caretPositionRef.current = start;
+                            // Update note in database
+                            if (newNoteText === "") {
+                              return;
                             }
 
-                            const noteContent = (e.target as HTMLElement)
-                              .innerText;
-                            debouncedUpdateNote(index, note.id, noteContent);
+                            const { data } = await supabaseClient
+                              .from("Notes")
+                              .select("id")
+                              .eq("id", note.id);
+
+                            if (data && data.length) {
+                              const encryptResponse = await fetch(
+                                `/encrypt?text=${encodeURIComponent(
+                                  newNoteText,
+                                )}`,
+                              );
+
+                              const encryptedText = (
+                                await encryptResponse.json()
+                              ).encryption;
+
+                              let embedding = null;
+                              const embeddingResponse = await fetch(
+                                `/embed?text=${encodeURIComponent(
+                                  newNoteText,
+                                )}`,
+                              );
+                              embedding = await embeddingResponse.json();
+
+                              const { error } = await supabaseClient
+                                .from("Notes")
+                                .update({ text: encryptedText, embedding })
+                                .eq("id", note.id);
+
+                              if (!error) {
+                                const newNotes = [...notes];
+                                newNotes[index] = {
+                                  id: note.id,
+                                  text: newNoteText,
+                                };
+                                setNotes(newNotes);
+                              }
+                            }
                           }}
-                        />
+                          suppressContentEditableWarning
+                        >
+                          {note.text}
+                        </Text>
                       );
                       return noteMode === "view" ? (
                         <Menu offset={0} position="right" key={index}>
