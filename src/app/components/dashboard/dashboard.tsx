@@ -410,6 +410,9 @@ export default function Dashboard() {
       if (!notesLoaded) {
         return;
       }
+      if (searchedText) {
+        return;
+      }
       if (session?.user.id) {
         if (!activeNoteSpace?.id) {
           setRecommendedNotes([]);
@@ -473,6 +476,7 @@ export default function Dashboard() {
     endDate,
     sideNavigator,
     notesLoaded,
+    searchedText,
   ]);
 
   // Reset side navigator state when switching between navigators
@@ -1033,6 +1037,11 @@ export default function Dashboard() {
                   cursor: "pointer",
                 }}
                 onClick={async () => {
+                  if (activeNoteSpace != null) {
+                    setNotes([]);
+                  }
+                  setNotesLoaded(false);
+                  setSearchedText(null);
                   setActiveNoteSpace(null);
                 }}
               >
@@ -1062,7 +1071,9 @@ export default function Dashboard() {
                       cursor: "pointer",
                     }}
                     onClick={() => {
-                      setNotes([]);
+                      if (activeNoteSpace?.id != notespace.id) {
+                        setNotes([]);
+                      }
                       setNotesLoaded(false);
                       setSearchedText(null);
                       setActiveNoteSpace(notespace);
@@ -1203,6 +1214,7 @@ export default function Dashboard() {
                       e.preventDefault();
                       const textToSearch = (e.target as HTMLInputElement).value;
                       (e.target as HTMLInputElement).value = "";
+                      setNotes([]);
                       setSearchedText(textToSearch);
                     }
                   }}
@@ -2023,6 +2035,7 @@ export default function Dashboard() {
                             onKeyDown={async (e) => {
                               if (e.key == "Enter") {
                                 e.preventDefault();
+                                setSideSearchedNotes([]);
                                 setSideSearchText(sideSearchTextInputValue);
                               }
                             }}
