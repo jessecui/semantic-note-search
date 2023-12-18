@@ -142,7 +142,7 @@ export default function Dashboard() {
     const fetchNoteSpaces = async () => {
       if (session?.user.id) {
         const { data, error } = await supabaseClient
-          .from("Notespaces")
+          .from("Note Spaces")
           .select("id, name")
           .eq("user_id", session?.user.id)
           .order("created_at", { ascending: true });
@@ -208,10 +208,10 @@ export default function Dashboard() {
     const fetchNotesWithinNoteSpaceWithDates = async () => {
       if (activeNoteSpace?.id && session?.user.id) {
         let query = supabaseClient
-          .from("Note to Notespace")
+          .from("Note to Note Space")
           .select("id, Notes (id, text)")
           .eq("user_id", session?.user.id)
-          .eq("notespace_id", activeNoteSpace.id);
+          .eq("note_space_id", activeNoteSpace.id);
 
         if (startDate) {
           const formattedStartDate = startDate.toISOString();
@@ -274,7 +274,7 @@ export default function Dashboard() {
         query_embedding: embedding,
         match_threshold: 1.8,
         match_count: 100,
-        match_notespace_id: activeNoteSpace?.id,
+        match_note_space_id: activeNoteSpace?.id,
         match_start: startDate?.toISOString(),
         match_end: endDate?.toISOString(),
       });
@@ -355,10 +355,10 @@ export default function Dashboard() {
           .eq("user_id", session?.user.id);
       } else {
         query = supabaseClient
-          .from("Note to Notespace")
+          .from("Note to Note Space")
           .select("id, Notes (id, text)")
           .eq("user_id", session?.user.id)
-          .eq("notespace_id", activeSideNoteSpace.id);
+          .eq("note_space_id", activeSideNoteSpace.id);
       }
 
       if (startDate) {
@@ -419,7 +419,7 @@ export default function Dashboard() {
           return;
         }
         let query = supabaseClient
-          .from("Notespaces")
+          .from("Note Spaces")
           .select("embedding")
           .eq("id", activeNoteSpace?.id);
 
@@ -865,10 +865,10 @@ export default function Dashboard() {
             // Delete from supabase
             if (activeNoteSpace?.id) {
               const { error } = await supabaseClient
-                .from("Note to Notespace")
+                .from("Note to Note Space")
                 .delete()
                 .eq("note_id", noteIdToDelete)
-                .eq("notespace_id", activeNoteSpace.id);
+                .eq("note_space_id", activeNoteSpace.id);
               if (error) {
                 console.log(error);
               }
@@ -1104,7 +1104,7 @@ export default function Dashboard() {
                           }
                           onClick={async () => {
                             const { error } = await supabaseClient
-                              .from("Notespaces")
+                              .from("Note Spaces")
                               .delete()
                               .eq("id", notespace.id);
 
@@ -1169,7 +1169,7 @@ export default function Dashboard() {
                     .encryption;
 
                   const { data, error } = await supabaseClient
-                    .from("Notespaces")
+                    .from("Note Spaces")
                     .insert([{ name: encryptedText }])
                     .select();
 
@@ -1295,7 +1295,7 @@ export default function Dashboard() {
                       const embedding = await embeddingResponse.json();
 
                       const { error } = await supabaseClient
-                        .from("Notespaces")
+                        .from("Note Spaces")
                         .update({ name: encryptedText, embedding: embedding })
                         .eq("id", activeNoteSpace?.id);
 
@@ -1414,10 +1414,10 @@ export default function Dashboard() {
 
                             if (activeNoteSpace?.id) {
                               const { error: error2 } = await supabaseClient
-                                .from("Note to Notespace")
+                                .from("Note to Note Space")
                                 .insert([
                                   {
-                                    notespace_id: activeNoteSpace?.id,
+                                    note_space_id: activeNoteSpace?.id,
                                     note_id: data[0].id,
                                   },
                                 ]);
@@ -1542,9 +1542,12 @@ export default function Dashboard() {
                                     data: existingData,
                                     error: existingError,
                                   } = await supabaseClient
-                                    .from("Note to Notespace")
+                                    .from("Note to Note Space")
                                     .select("id")
-                                    .eq("notespace_id", activeSideNoteSpace?.id)
+                                    .eq(
+                                      "note_space_id",
+                                      activeSideNoteSpace?.id,
+                                    )
                                     .eq("note_id", note.id);
 
                                   if (existingError) {
@@ -1559,10 +1562,10 @@ export default function Dashboard() {
 
                                   // Insert Note into Notespace
                                   const { error } = await supabaseClient
-                                    .from("Note to Notespace")
+                                    .from("Note to Note Space")
                                     .insert([
                                       {
-                                        notespace_id: activeSideNoteSpace?.id,
+                                        note_space_id: activeSideNoteSpace?.id,
                                         note_id: note.id,
                                       },
                                     ]);
@@ -1763,9 +1766,12 @@ export default function Dashboard() {
                                         data: existingData,
                                         error: existingError,
                                       } = await supabaseClient
-                                        .from("Note to Notespace")
+                                        .from("Note to Note Space")
                                         .select("id")
-                                        .eq("notespace_id", activeNoteSpace?.id)
+                                        .eq(
+                                          "note_space_id",
+                                          activeNoteSpace?.id,
+                                        )
                                         .eq("note_id", note.id);
 
                                       if (existingError) {
@@ -1780,10 +1786,10 @@ export default function Dashboard() {
 
                                       // Insert Note into Notespace
                                       const { error } = await supabaseClient
-                                        .from("Note to Notespace")
+                                        .from("Note to Note Space")
                                         .insert([
                                           {
-                                            notespace_id: activeNoteSpace?.id,
+                                            note_space_id: activeNoteSpace?.id,
                                             note_id: note.id,
                                           },
                                         ]);
@@ -1902,10 +1908,10 @@ export default function Dashboard() {
                                           data: existingData,
                                           error: existingError,
                                         } = await supabaseClient
-                                          .from("Note to Notespace")
+                                          .from("Note to Note Space")
                                           .select("id")
                                           .eq(
-                                            "notespace_id",
+                                            "note_space_id",
                                             activeNoteSpace?.id,
                                           )
                                           .eq("note_id", note.id);
@@ -1922,10 +1928,11 @@ export default function Dashboard() {
 
                                         // Insert Note into Notespace
                                         const { error } = await supabaseClient
-                                          .from("Note to Notespace")
+                                          .from("Note to Note Space")
                                           .insert([
                                             {
-                                              notespace_id: activeNoteSpace?.id,
+                                              note_space_id:
+                                                activeNoteSpace?.id,
                                               note_id: note.id,
                                             },
                                           ]);
@@ -2079,10 +2086,10 @@ export default function Dashboard() {
                                                 data: existingData,
                                                 error: existingError,
                                               } = await supabaseClient
-                                                .from("Note to Notespace")
+                                                .from("Note to Note Space")
                                                 .select("id")
                                                 .eq(
-                                                  "notespace_id",
+                                                  "note_space_id",
                                                   activeNoteSpace?.id,
                                                 )
                                                 .eq("note_id", note.id);
@@ -2100,10 +2107,10 @@ export default function Dashboard() {
                                               // Insert Note into Notespace
                                               const { error } =
                                                 await supabaseClient
-                                                  .from("Note to Notespace")
+                                                  .from("Note to Note Space")
                                                   .insert([
                                                     {
-                                                      notespace_id:
+                                                      note_space_id:
                                                         activeNoteSpace?.id,
                                                       note_id: note.id,
                                                     },

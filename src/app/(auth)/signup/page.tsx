@@ -46,7 +46,7 @@ export default function SignUp() {
       email,
       password,
       options: {
-        emailRedirectTo: "http://localhost:3000/",
+        emailRedirectTo: process.env.NEXT_PUBLIC_SITE_DOMAIN,
       },
     });
 
