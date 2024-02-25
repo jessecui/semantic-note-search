@@ -1,8 +1,4 @@
-# Crux: The playground for notes and ideas
-
-Crux is an app designed to organize your ideas in a simple and smart way, helping you create better content faster.
-
-Users can quickly capture atomic notes which can then be related and used as building blocks for publishable complete content.
+# NoteSearch
 
 ## Getting Started
 
