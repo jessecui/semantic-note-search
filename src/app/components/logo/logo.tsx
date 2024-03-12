@@ -8,17 +8,17 @@ const Logo = () => {
     <>
       <Image
         className="light-only"
-        src="/crux-logo.png"
-        alt="Crux Logo"
-        width={90}
+        src="/notesearch-logo.png"
+        alt="NoteSearch Logo"
+        width={163}
         height={30}
         priority
       />
       <Image
         className="dark-only"
-        src="/crux-logo-dark.png"
-        alt="Crux Logo"
-        width={90}
+        src="/notesearch-logo-dark.png"
+        alt="NoteSearch Logo"
+        width={163}
         height={30}
         priority
       />

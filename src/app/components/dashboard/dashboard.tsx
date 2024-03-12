@@ -911,17 +911,17 @@ export default function Dashboard() {
               <Flex align="center">
                 <Image
                   className="light-only"
-                  src="/crux-logo.png"
-                  alt="Crux Logo"
-                  width={75}
+                  src="/notesearch-logo.png"
+                  alt="NoteSearch Logo"
+                  width={136}
                   height={25}
                   priority
                 />
                 <Image
                   className="dark-only"
-                  src="/crux-logo-dark.png"
-                  alt="Crux Logo"
-                  width={75}
+                  src="/notesearch-logo-dark.png"
+                  alt="NoteSearch Logo"
+                  width={136}
                   height={25}
                   priority
                 />
