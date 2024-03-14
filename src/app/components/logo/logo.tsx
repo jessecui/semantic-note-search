@@ -10,7 +10,7 @@ const Logo = () => {
         className="light-only"
         src="/notesearch-logo.png"
         alt="NoteSearch Logo"
-        width={156}
+        width={150}
         height={30}
         priority
       />
@@ -18,7 +18,7 @@ const Logo = () => {
         className="dark-only"
         src="/notesearch-logo-dark.png"
         alt="NoteSearch Logo"
-        width={156}
+        width={150}
         height={30}
         priority
       />

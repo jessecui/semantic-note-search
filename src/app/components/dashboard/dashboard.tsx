@@ -913,7 +913,7 @@ export default function Dashboard() {
                   className="light-only"
                   src="/notesearch-logo.png"
                   alt="NoteSearch Logo"
-                  width={130}
+                  width={125}
                   height={25}
                   priority
                 />
@@ -921,7 +921,7 @@ export default function Dashboard() {
                   className="dark-only"
                   src="/notesearch-logo-dark.png"
                   alt="NoteSearch Logo"
-                  width={130}
+                  width={125}
                   height={25}
                   priority
                 />
