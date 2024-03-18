@@ -10,9 +10,6 @@ import {
   Container,
   Divider,
   Flex,
-  Grid,
-  GridCol,
-  Group,
   Menu,
   MenuDropdown,
   MenuItem,
@@ -28,15 +25,11 @@ import {
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { useDisclosure } from "@mantine/hooks";
-import { Session } from "@supabase/supabase-js";
 import {
-  IconArrowBadgeRightFilled,
   IconArticle,
-  IconCalendar,
   IconClipboardText,
   IconDots,
-  IconInfoCircle,
-  IconLogout,
+  IconInfoCircle,  
   IconMoon,
   IconPlus,
   IconSearch,
@@ -46,16 +39,12 @@ import {
   IconUser,
 } from "@tabler/icons-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import supabaseClient from "../../../supabase/supabaseClient";
 import "./dashboard.css";
 
-export default function Dashboard() {
-  const router = useRouter();
-  const [session, setSession] = useState<Session | null>(null);
-
+export default function Dashboard() {  
   // Notes state
   const [notes, setNotes] = useState<{ id: any; text: any }[]>([]);
 
@@ -80,92 +69,61 @@ export default function Dashboard() {
     getInitialValueInEffect: true,
   });
 
-  // Main notes loaded state
-  const [notesLoaded, setNotesLoaded] = useState<boolean>(true);
-
   // Dashboard refs
-  const editableNoteRef = useRef<HTMLDivElement>(null);
-  const eventListenersRef = useRef<{
-    [key: string]: (e: KeyboardEvent) => void;
-  }>({});
+  const editableNoteRef = useRef<HTMLDivElement>(null);  
 
   // Alert disclosure for notifying user of duplicate note creation
   const [alertOpened, { open: openAlert, close: closeAlert }] =
     useDisclosure(false);
 
-  // Set session after fetching the router data
-  useEffect(() => {
-    const fetchSession = async () => {
-      const { data, error } = await supabaseClient.auth.getSession();
-      if (error) console.log(error);
-      else setSession(data.session);
-      if (!data.session) {
-        router.push("/");
-      }
-    };
-    fetchSession();
-
-    editableNoteRef.current?.focus();
-  }, [router]);
-
   // Fetch initial note spaces
   useEffect(() => {
     const fetchNoteSpaces = async () => {
-      if (session?.user.id) {
-        const { data, error } = await supabaseClient
-          .from("Note Spaces")
-          .select("id, name")
-          .eq("user_id", session?.user.id)
-          .order("created_at", { ascending: true });
+      const { data, error } = await supabaseClient
+        .from("Note Spaces")
+        .select("id, name")
+        .order("created_at", { ascending: true });
 
-        if (error) console.log(error);
-        if (data) {
-          setNoteSpaces(data);
-        }
+      if (error) console.log(error);
+      if (data) {
+        setNoteSpaces(data);
       }
     };
     fetchNoteSpaces();
-  }, [session]);
+  }, []);
 
   // Fetch notes within note spaces
   useEffect(() => {
     const fetchAllNotesWithDates = async () => {
-      if (session?.user.id) {
-        let query = supabaseClient
-          .from("Notes")
-          .select("id, text")
-          .eq("user_id", session?.user.id);
+      let query = supabaseClient.from("Notes").select("id, text");
 
-        if (startDate) {
-          const formattedStartDate = startDate.toISOString();
-          query = query.gte("created_at", formattedStartDate);
-        }
+      if (startDate) {
+        const formattedStartDate = startDate.toISOString();
+        query = query.gte("created_at", formattedStartDate);
+      }
 
-        if (endDate) {
-          const formattedEndDate = new Date(
-            new Date(endDate).setDate(endDate.getDate() + 1),
-          ).toISOString();
-          query = query.lte("created_at", formattedEndDate);
-        }
+      if (endDate) {
+        const formattedEndDate = new Date(
+          new Date(endDate).setDate(endDate.getDate() + 1),
+        ).toISOString();
+        query = query.lte("created_at", formattedEndDate);
+      }
 
-        query = query.order("created_at", { ascending: false });
+      query = query.order("created_at", { ascending: false });
 
-        const { data, error } = await query;
+      const { data, error } = await query;
 
-        if (error) console.log(error);
-        if (data) {
-          setNotes(data);
-          setNotesLoaded(true);
-        }
+      if (error) console.log(error);
+      if (data) {
+        setNotes(data);
       }
     };
 
     const fetchNotesWithinNoteSpaceWithDates = async () => {
-      if (activeNoteSpace?.id && session?.user.id) {
+      if (activeNoteSpace?.id) {
         let query = supabaseClient
           .from("Note to Note Space")
           .select("id, Notes (id, text)")
-          .eq("user_id", session?.user.id)
           .eq("note_space_id", activeNoteSpace.id);
 
         if (startDate) {
@@ -190,7 +148,6 @@ export default function Dashboard() {
             return note.Notes;
           });
           setNotes(notes);
-          setNotesLoaded(true);
         }
       }
     };
@@ -204,7 +161,7 @@ export default function Dashboard() {
     } else {
       fetchAllNotesWithDates();
     }
-  }, [startDate, endDate, session, activeNoteSpace, searchedText]);
+  }, [startDate, endDate, activeNoteSpace, searchedText]);
 
   // Fetch notes when using main semantic search
   useEffect(() => {
@@ -273,7 +230,7 @@ export default function Dashboard() {
               leftSection={<IconUser size={16} />}
               style={{ cursor: "default" }}
               className="navlink-disabled"
-              label={<Text size="sm">{session?.user.email}</Text>}
+              label={<Text size="sm">Jesse Cui</Text>}
             />
             <Divider my={8} />
             <NavLink
@@ -294,15 +251,6 @@ export default function Dashboard() {
               }}
               label={<Text size="sm">Change Appearance</Text>}
               mb={8}
-            />
-            <NavLink
-              p={0}
-              leftSection={<IconLogout size={16} />}
-              className="navlink"
-              onClick={async () => {
-                await supabaseClient.auth.signOut();
-              }}
-              label={<Text size="sm">Log Out</Text>}
             />
           </NavLink>
           <Box
@@ -347,7 +295,6 @@ export default function Dashboard() {
                   if (activeNoteSpace != null) {
                     setNotes([]);
                   }
-                  setNotesLoaded(false);
                   setSearchedText(null);
                   setActiveNoteSpace(null);
                 }}
@@ -381,7 +328,6 @@ export default function Dashboard() {
                       if (activeNoteSpace?.id != notespace.id) {
                         setNotes([]);
                       }
-                      setNotesLoaded(false);
                       setSearchedText(null);
                       setActiveNoteSpace(notespace);
                     }}
