@@ -31,6 +31,7 @@ export default function RootLayout({
             fontFamily: outfit.style.fontFamily,
             headings: { fontWeight: "500" },
           }}
+          defaultColorScheme="dark"
         >
           {children}
         </MantineProvider>

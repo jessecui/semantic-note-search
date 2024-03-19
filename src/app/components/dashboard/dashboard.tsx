@@ -27,9 +27,10 @@ import { DatePickerInput } from "@mantine/dates";
 import { useDisclosure } from "@mantine/hooks";
 import {
   IconArticle,
+  IconCalendar,
   IconClipboardText,
   IconDots,
-  IconInfoCircle,  
+  IconInfoCircle,
   IconMoon,
   IconPlus,
   IconSearch,
@@ -44,7 +45,7 @@ import { useEffect, useRef, useState } from "react";
 import supabaseClient from "../../../supabase/supabaseClient";
 import "./dashboard.css";
 
-export default function Dashboard() {  
+export default function Dashboard() {
   // Notes state
   const [notes, setNotes] = useState<{ id: any; text: any }[]>([]);
 
@@ -65,12 +66,12 @@ export default function Dashboard() {
   const [endDate, setEndDate] = useState<Date | null>(null);
 
   const { setColorScheme } = useMantineColorScheme();
-  const computedColorScheme = useComputedColorScheme("light", {
+  const computedColorScheme = useComputedColorScheme("dark", {
     getInitialValueInEffect: true,
   });
 
   // Dashboard refs
-  const editableNoteRef = useRef<HTMLDivElement>(null);  
+  const editableNoteRef = useRef<HTMLDivElement>(null);
 
   // Alert disclosure for notifying user of duplicate note creation
   const [alertOpened, { open: openAlert, close: closeAlert }] =
@@ -203,6 +204,7 @@ export default function Dashboard() {
             p={0}
             mt={4}
             styles={{ children: { paddingLeft: 4, paddingTop: 8 } }}
+            className="bg-accent"
             label={
               <Flex align="center">
                 <Image
@@ -260,20 +262,18 @@ export default function Dashboard() {
           >
             <Stack gap={4} mb={32}>
               <DatePickerInput
-                // leftSection={<IconCalendar size={16} />}
+              leftSection={<IconCalendar size={16} />}
                 label="Start Date"
                 value={startDate}
                 onChange={setStartDate}
-                // w={140}
-                valueFormat="M/D/YYYY"
+                valueFormat="MMMM D, YYYY"
                 clearable
               />
               <DatePickerInput
-                // leftSection={<IconCalendar size={16} />}
+              leftSection={<IconCalendar size={16} />}
                 label="End Date"
                 value={endDate}
                 onChange={setEndDate}
-                // w={140}
                 valueFormat="M/D/YYYY"
                 clearable
               />
@@ -381,68 +381,15 @@ export default function Dashboard() {
                   )}
                 </Flex>
               ))}
-              <Text
-                mt={4}
-                className="navlink"
-                fw={500}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  cursor: "pointer",
-                }}
-                onClick={async () => {
-                  let newNoteSpaceName = "Note Space ";
-
-                  // Find a unique note space name with an appended number
-                  for (
-                    let i = noteSpaces.length;
-                    i < noteSpaces.length * 2;
-                    i++
-                  ) {
-                    if (
-                      noteSpaces.find(
-                        (noteSpace) =>
-                          noteSpace.name === `${newNoteSpaceName}${i}`,
-                      ) === undefined
-                    ) {
-                      newNoteSpaceName = `${newNoteSpaceName}${i}`;
-                      break;
-                    }
-                  }
-
-                  const { data, error } = await supabaseClient
-                    .from("Note Spaces")
-                    .insert([{ name: newNoteSpaceName }])
-                    .select();
-
-                  if (!error) {
-                    setActiveNoteSpace({
-                      id: data[0].id,
-                      name: newNoteSpaceName,
-                    });
-                    setNoteSpaces([
-                      ...noteSpaces,
-                      { id: data[0].id, name: newNoteSpaceName },
-                    ]);
-                  } else {
-                    console.log(error);
-                  }
-                }}
-              >
-                <IconPlus size={16} />
-                Add a Note Space
-              </Text>
             </Stack>
           </Box>
         </AppShellNavbar>
-        <AppShellMain>
+        <AppShellMain className="bg-main">
           <Container h={"95vh"} w={768}>
             <Textarea
               rows={1}
               autosize
-              radius={4}
-              placeholder="Search Notes"
+              radius={4}              
               leftSection={
                 <IconSearch
                   style={{ alignSelf: "start", marginTop: 8.5 }}
@@ -467,7 +414,7 @@ export default function Dashboard() {
               py={36}
               h={"90%"}
               style={{ overflow: "auto" }}
-              className="custom-scrollbar"
+              className="bg-main custom-scrollbar"
             >
               <Text
                 id="notespace-title"

@@ -34,9 +34,9 @@
   background-color: var(--mantine-color-gray-0);
 }
 
-[data-mantine-color-scheme="dark"] .navbar {
+/* [data-mantine-color-scheme="dark"] .navbar {
   background-color: var(--mantine-color-dark-6);
-}
+} */
 
 [data-mantine-color-scheme="light"] .navlink {
   color: var(--mantine-color-gray-7);
@@ -112,4 +112,16 @@
 
 [data-mantine-color-scheme="dark"] .light-only {
   display: none;
+}
+
+[data-mantine-color-scheme="dark"] .bg-main {
+  background-color: var(--mantine-color-dark-8);
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Input-input {
+  background-color: var(--mantine-color-dark-6);
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Modal-body {
+  background-color: var(--mantine-color-dark-8);
 }

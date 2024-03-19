@@ -24,7 +24,7 @@ export default function LogIn() {
         blur: 2,
       }}
       closeOnEscape={false}
-      closeOnClickOutside={false}
+      closeOnClickOutside={false}      
     >
       <form
         onSubmit={form.onSubmit(async ({ username, password }) => {
@@ -39,17 +39,11 @@ export default function LogIn() {
             close();
           } else {
             form.setErrors({
-              username: "",
-              password: "Invalid username or password",
+              password: "Invalid password",
             });
           }
         })}
       >
-        <TextInput
-          label="Username"
-          placeholder="Username"
-          {...form.getInputProps("username")}
-        />
         <PasswordInput
           label="Password"
           placeholder="********"
