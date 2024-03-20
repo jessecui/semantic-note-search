@@ -96,7 +96,7 @@ export default function Dashboard() {
     const fetchNoteSpaces = async () => {
       if (supabaseClient) {
         const { data, error } = await supabaseClient
-          .from("Note Spaces")
+          .from("Searches")
           .select("id, name")
           .order("created_at", { ascending: true });
 
@@ -344,7 +344,7 @@ export default function Dashboard() {
               />
             </Stack>
             <Stack gap={4} mt={8}>
-              <Text>Saved Queries</Text>
+              <Text>Saved Searches</Text>
               <Text
                 className={
                   activeNoteSpace == null ? "navlink-selected" : "navlink"
@@ -422,7 +422,7 @@ export default function Dashboard() {
                           }
                           onClick={async () => {
                             const { error } = await supabaseClient!
-                              .from("Note Spaces")
+                              .from("Searches")
                               .delete()
                               .eq("id", notespace.id);
 
@@ -514,7 +514,7 @@ export default function Dashboard() {
                   const embedding = await embeddingResponse.json();
 
                   const { error } = await supabaseClient!
-                    .from("Note Spaces")
+                    .from("Queries")
                     .update({ name: noteSpaceName, embedding: embedding })
                     .eq("id", activeNoteSpace?.id);
 
