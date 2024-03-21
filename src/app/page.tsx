@@ -17,14 +17,11 @@ import {
   MenuItem,
   MenuTarget,
   Modal,
-  NavLink,
   Paper,
   PasswordInput,
   Stack,
   Text,
   Textarea,
-  useComputedColorScheme,
-  useMantineColorScheme,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
@@ -35,19 +32,13 @@ import {
   IconCalendar,
   IconClipboardText,
   IconDots,
-  IconInfoCircle,
-  IconMoon,
-  IconPlus,
+  IconInfoCircle,  
   IconSearch,
-  IconStack2,
-  IconSun,
-  IconTrash,
-  IconUser,
+  IconStack2,  
+  IconTrash,  
 } from "@tabler/icons-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-
-import "./style.css";
 
 export default function Dashboard() {
   // Notes state
@@ -68,11 +59,6 @@ export default function Dashboard() {
 
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
-
-  const { setColorScheme } = useMantineColorScheme();
-  const computedColorScheme = useComputedColorScheme("dark", {
-    getInitialValueInEffect: true,
-  });
 
   const [opened, { close }] = useDisclosure(true);
   const form = useForm({
@@ -235,7 +221,7 @@ export default function Dashboard() {
                 username,
               )}&password=${encodeURIComponent(password)}`,
             );
-            const { verified, supabaseCredentials } = await response.json();            
+            const { verified, supabaseCredentials } = await response.json();
 
             if (verified) {
               setSupabaseClient(
@@ -265,61 +251,15 @@ export default function Dashboard() {
       </Modal>
       <AppShell navbar={{ width: 270, breakpoint: "xs" }} padding="md">
         <AppShellNavbar p="md" className="navbar">
-          <NavLink
-            p={0}
-            mt={4}
-            styles={{ children: { paddingLeft: 4, paddingTop: 8 } }}
-            className="bg-accent"
-            label={
-              <Flex align="center">
-                <Image
-                  className="light-only"
-                  src="/notesearch-logo.png"
-                  alt="NoteSearch Logo"
-                  width={125}
-                  height={25}
-                  priority
-                />
-                <Image
-                  className="dark-only"
-                  src="/notesearch-logo-dark.png"
-                  alt="NoteSearch Logo"
-                  width={125}
-                  height={25}
-                  priority
-                />
-              </Flex>
-            }
-          >
-            <NavLink
-              mt={6}
-              p={0}
-              leftSection={<IconUser size={16} />}
-              style={{ cursor: "default" }}
-              className="navlink-disabled"
-              label={<Text size="sm">Jesse Cui</Text>}
+          <Flex align="center" mt={4}>
+            <Image
+              src="/notesearch-logo.png"
+              alt="NoteSearch Logo"
+              width={125}
+              height={25}
+              priority
             />
-            <Divider my={8} />
-            <NavLink
-              p={0}
-              leftSection={
-                <>
-                  <IconSun size={16} className="light-only" />
-                  <IconMoon size={16} className="dark-only" />
-                </>
-              }
-              className="navlink"
-              onClick={() => {
-                if (computedColorScheme == "light") {
-                  setColorScheme("dark");
-                } else {
-                  setColorScheme("light");
-                }
-              }}
-              label={<Text size="sm">Change Appearance</Text>}
-              mb={8}
-            />
-          </NavLink>
+          </Flex>          
           <Box
             mt={32}
             style={{ overflow: "auto" }}
@@ -332,7 +272,7 @@ export default function Dashboard() {
                 value={startDate}
                 onChange={setStartDate}
                 valueFormat="MMMM D, YYYY"
-                clearable
+                clearable                
               />
               <DatePickerInput
                 leftSection={<IconCalendar size={16} />}
@@ -449,7 +389,7 @@ export default function Dashboard() {
             </Stack>
           </Box>
         </AppShellNavbar>
-        <AppShellMain className="bg-main">
+        <AppShellMain bg="dark.8">
           <Container h={"95vh"} w={768}>
             <Textarea
               rows={1}
@@ -471,6 +411,7 @@ export default function Dashboard() {
                   setSearchedText(textToSearch);
                 }
               }}
+              styles={{ input: { '&:focus': { outline: 'red', boxShadow: 'red' } } }}             
             />
             <Paper
               radius={4}
@@ -479,7 +420,7 @@ export default function Dashboard() {
               py={36}
               h={"90%"}
               style={{ overflow: "auto" }}
-              className="bg-main custom-scrollbar"
+              bg="dark.8"              
             >
               <Text
                 id="notespace-title"

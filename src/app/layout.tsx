@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <ColorSchemeScript />
+        <ColorSchemeScript defaultColorScheme="dark" />
       </head>
       <body>
         <MantineProvider
@@ -31,7 +31,7 @@ export default function RootLayout({
             fontFamily: outfit.style.fontFamily,
             headings: { fontWeight: "500" },
           }}
-          defaultColorScheme="dark"
+          defaultColorScheme="dark"          
         >
           {children}
         </MantineProvider>
