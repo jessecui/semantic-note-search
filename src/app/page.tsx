@@ -420,7 +420,7 @@ export default function Dashboard() {
             <Paper
               radius={4}
               withBorder
-              px={48}
+              px={4}
               py={36}
               h={"90%"}
               style={{ overflow: "auto" }}
@@ -432,7 +432,8 @@ export default function Dashboard() {
                 onMouseEnter={() => setHoveredNoteTitle(true)}
                 onMouseLeave={() => setHoveredNoteTitle(false)}
                 gap={4}
-                ml={-32}
+                pl={16}
+                pr={42}
               >
                 {hoveredNoteTitle && activeNoteSpace ? (
                   <Menu offset={4} position="left">
@@ -573,7 +574,8 @@ export default function Dashboard() {
                       onMouseEnter={() => setHoveredNoteId(note.id)}
                       onMouseLeave={() => setHoveredNoteId(null)}
                       gap={4}
-                      ml={-32}
+                      pl={16}
+                      pr={42}
                     >
                       {hoveredNoteId === note.id ? (
                         <Menu offset={4} position="left">
