@@ -427,9 +427,7 @@ export default function Dashboard() {
                   e.preventDefault();
                   const textToSearch = (e.target as HTMLInputElement).value;
                   (e.target as HTMLInputElement).value = "";
-                  setNotes([]);
-                  setSearchedText(textToSearch);
-                  setSearchText({ id: -1, text: textToSearch });
+                  router.push(`/?search=${encodeURIComponent(textToSearch)}`);
                 }
               }}
             />
