@@ -24,6 +24,7 @@ import {
   Text,
   Textarea,
 } from "@mantine/core";
+import { useMantineTheme } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
@@ -41,6 +42,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 export default function Dashboard() {
@@ -48,10 +50,12 @@ export default function Dashboard() {
   const [notes, setNotes] = useState<{ id: any; text: any }[]>([]);
 
   // Note space states
-  const [noteSpaces, setNoteSpaces] = useState<{ id: any; name: string }[]>([]);
-  const [activeNoteSpace, setActiveNoteSpace] = useState<{
+  const [savedSearches, setSavedSearches] = useState<
+    { id: any; text: string }[]
+  >([]);
+  const [searchText, setSearchText] = useState<{
     id: any;
-    name: string;
+    text: string;
   } | null>(null);
   const [hoveredNoteSpaceId, setHoveredNoteSpaceId] = useState<Number | null>(
     null,
@@ -75,6 +79,18 @@ export default function Dashboard() {
 
   const [supabaseClient, setSupabaseClient] = useState<SupabaseClient>();
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const searchText = searchParams.get("search");
+    if (searchText) {
+      setNotes([]);
+      setSearchedText(searchText);
+      setSearchText({ id: -1, text: searchText });
+    }
+  }, [searchParams]);
+
   // Dashboard refs
   const editableNoteRef = useRef<HTMLDivElement>(null);
 
@@ -82,18 +98,20 @@ export default function Dashboard() {
   const [alertOpened, { open: openAlert, close: closeAlert }] =
     useDisclosure(false);
 
+  const theme = useMantineTheme();
+
   // Fetch initial note spaces
   useEffect(() => {
     const fetchNoteSpaces = async () => {
       if (supabaseClient) {
         const { data, error } = await supabaseClient
           .from("Searches")
-          .select("id, name")
-          .order("created_at", { ascending: true });
+          .select("id, text")
+          .order("created_at", { ascending: false });
 
         if (error) console.log(error);
         if (data) {
-          setNoteSpaces(data);
+          setSavedSearches(data);
         }
       }
     };
@@ -130,11 +148,11 @@ export default function Dashboard() {
     };
 
     const fetchNotesWithinNoteSpaceWithDates = async () => {
-      if (activeNoteSpace?.id && supabaseClient) {
+      if (searchText?.id && supabaseClient) {
         let query = supabaseClient
           .from("Note to Note Space")
           .select("id, Notes (id, text)")
-          .eq("note_space_id", activeNoteSpace.id);
+          .eq("note_space_id", searchText.id);
 
         if (startDate) {
           const formattedStartDate = startDate.toISOString();
@@ -166,12 +184,12 @@ export default function Dashboard() {
       return;
     }
 
-    if (activeNoteSpace) {
+    if (searchText) {
       fetchNotesWithinNoteSpaceWithDates();
     } else {
       fetchAllNotesWithDates();
     }
-  }, [startDate, endDate, activeNoteSpace, searchedText, supabaseClient]);
+  }, [startDate, endDate, searchText, searchedText, supabaseClient]);
 
   // Fetch notes when using main semantic search
   useEffect(() => {
@@ -187,8 +205,7 @@ export default function Dashboard() {
       const { data, error } = await supabaseClient.rpc("match_notes", {
         query_embedding: embedding,
         match_threshold: 1.8,
-        match_count: 100,
-        match_note_space_id: activeNoteSpace?.id,
+        match_count: 1000,
         match_start: startDate?.toISOString(),
         match_end: endDate?.toISOString(),
       });
@@ -203,7 +220,7 @@ export default function Dashboard() {
     };
 
     semanticSearch();
-  }, [searchedText, activeNoteSpace, startDate, endDate, supabaseClient]);
+  }, [searchedText, startDate, endDate, supabaseClient]);
 
   return (
     <main>
@@ -254,9 +271,20 @@ export default function Dashboard() {
           </Center>
         </form>
       </Modal>
-      <AppShell navbar={{ width: 270, breakpoint: "xs" }} padding="md">
+      <AppShell navbar={{ width: 285, breakpoint: "xs" }} padding="md">
         <AppShellNavbar p="md" className="navbar">
-          <Flex align="center" mt={4}>
+          <Flex
+            align="center"
+            mt={4}
+            onClick={async () => {
+              if (searchText != null) {
+                setNotes([]);
+              }
+              setSearchedText(null);
+              setSearchText(null);
+            }}
+            style={{ cursor: "pointer" }}
+          >
             <Image
               src="/notesearch-logo.png"
               alt="NoteSearch Logo"
@@ -278,56 +306,45 @@ export default function Dashboard() {
                 onChange={setStartDate}
                 valueFormat="MMMM D, YYYY"
                 clearable
+                styles={{
+                  label: {
+                    color: theme.colors.dark[2],
+                  },
+                }}
               />
               <DatePickerInput
                 leftSection={<IconCalendar size={16} />}
                 label="End Date"
                 value={endDate}
                 onChange={setEndDate}
-                valueFormat="M/D/YYYY"
+                valueFormat="MMMM D, YYYY"
                 clearable
+                styles={{
+                  label: {
+                    color: theme.colors.dark[2],
+                  },
+                }}
               />
             </Stack>
             <Stack gap={4} mt={8}>
-              <Text>Saved Searches</Text>
-              <Text
-                className={
-                  activeNoteSpace == null ? "navlink-selected" : "navlink"
-                }
-                fw={500}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  cursor: "pointer",
-                }}
-                onClick={async () => {
-                  if (activeNoteSpace != null) {
-                    setNotes([]);
-                  }
-                  setSearchedText(null);
-                  setActiveNoteSpace(null);
-                }}
-              >
-                <IconStack2 size={16} />
-                All Notes
+              <Text fz="sm" fw="500" c="dark.2">
+                Saved Searches
               </Text>
-              {noteSpaces.map((notespace) => (
+              {savedSearches.map((savedSearch) => (
                 <Flex
-                  key={notespace.id}
+                  key={savedSearch.id}
                   justify="space-between"
                   align="center"
                   h="25px"
-                  onMouseEnter={() => setHoveredNoteSpaceId(notespace.id)}
+                  onMouseEnter={() => setHoveredNoteSpaceId(savedSearch.id)}
                   onMouseLeave={() => setHoveredNoteSpaceId(null)}
                 >
                   <Text
                     className={
-                      notespace.id == activeNoteSpace?.id
+                      savedSearch.id == searchText?.id
                         ? "navlink-selected"
                         : "navlink"
                     }
-                    fw={500}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -335,17 +352,15 @@ export default function Dashboard() {
                       cursor: "pointer",
                     }}
                     onClick={() => {
-                      if (activeNoteSpace?.id != notespace.id) {
-                        setNotes([]);
-                      }
-                      setSearchedText(null);
-                      setActiveNoteSpace(notespace);
+                      router.push(
+                        `/?search=${encodeURIComponent(savedSearch.text)}`,
+                      );
                     }}
                   >
                     <IconClipboardText size={16} />
-                    {notespace.name}
+                    {savedSearch.text.length > 25 ? `${savedSearch.text.substring(0, 25)}...` : savedSearch.text}
                   </Text>
-                  {hoveredNoteSpaceId === notespace.id && (
+                  {hoveredNoteSpaceId === savedSearch.id && (
                     <Menu offset={-8} position="bottom-start">
                       <MenuTarget>
                         <ActionIcon
@@ -369,16 +384,16 @@ export default function Dashboard() {
                             const { error } = await supabaseClient!
                               .from("Searches")
                               .delete()
-                              .eq("id", notespace.id);
+                              .eq("id", savedSearch.id);
 
                             if (!error) {
-                              if (activeNoteSpace?.id == notespace.id) {
-                                setActiveNoteSpace(null);
+                              if (searchText?.id == savedSearch.id) {
+                                setSearchText(null);
                               }
-                              setNoteSpaces(
-                                noteSpaces.filter(
-                                  (notespace2) =>
-                                    notespace2.id !== notespace.id,
+                              setSavedSearches(
+                                savedSearches.filter(
+                                  (searchToKeep) =>
+                                    searchToKeep.id !== savedSearch.id,
                                 ),
                               );
                             }
@@ -414,6 +429,7 @@ export default function Dashboard() {
                   (e.target as HTMLInputElement).value = "";
                   setNotes([]);
                   setSearchedText(textToSearch);
+                  setSearchText({ id: -1, text: textToSearch });
                 }
               }}
             />
@@ -435,7 +451,7 @@ export default function Dashboard() {
                 pl={16}
                 pr={42}
               >
-                {hoveredNoteTitle && activeNoteSpace ? (
+                {hoveredNoteTitle && searchText ? (
                   <Menu offset={4} position="left">
                     <MenuTarget>
                       <ActionIcon
@@ -455,6 +471,25 @@ export default function Dashboard() {
                         leftSection={
                           <IconPin style={{ width: 16, height: 16 }} />
                         }
+                        onClick={async (e) => {
+                          // Add searchText to searches
+                          const embeddingResponse = await fetch(
+                            `/embed?text=${encodeURIComponent(
+                              searchText.text,
+                            )}`,
+                          );
+                          const embedding = await embeddingResponse.json();
+
+                          await supabaseClient!.from("Searches").insert({
+                            text: searchText.text,
+                            embedding: embedding,
+                          });
+
+                          setSavedSearches([
+                            { id: -1, text: searchText.text },
+                            ...savedSearches,
+                          ]);
+                        }}
                       >
                         Save Search
                       </MenuItem>
@@ -463,7 +498,7 @@ export default function Dashboard() {
                 ) : (
                   <ActionIcon
                     variant="transparent"
-                    style={{ cursor: activeNoteSpace ? "pointer" : "default" }}
+                    style={{ cursor: searchText ? "pointer" : "default" }}
                   />
                 )}
                 <Text
@@ -484,12 +519,12 @@ export default function Dashboard() {
                     // If notespace name already exists, reset the text
                     if (
                       noteSpaceName == "" ||
-                      noteSpaces.find(
-                        (notespace) => notespace.name === noteSpaceName,
+                      savedSearches.find(
+                        (savedSearch) => savedSearch.text === noteSpaceName,
                       )
                     ) {
                       (e.target as HTMLElement).innerText =
-                        activeNoteSpace?.name as string;
+                        searchText?.text as string;
                       return;
                     }
 
@@ -501,22 +536,22 @@ export default function Dashboard() {
                     const { error } = await supabaseClient!
                       .from("Queries")
                       .update({ name: noteSpaceName, embedding: embedding })
-                      .eq("id", activeNoteSpace?.id);
+                      .eq("id", searchText?.id);
 
                     if (error) {
                       console.log(error);
                       return;
                     }
-                    setActiveNoteSpace({
-                      id: activeNoteSpace?.id,
-                      name: noteSpaceName,
+                    setSearchText({
+                      id: searchText?.id,
+                      text: noteSpaceName,
                     });
-                    setNoteSpaces(
-                      noteSpaces.map((notespace) => {
-                        if (notespace.id === activeNoteSpace?.id) {
+                    setSavedSearches(
+                      savedSearches.map((notespace) => {
+                        if (notespace.id === searchText?.id) {
                           return {
-                            id: activeNoteSpace?.id,
-                            name: noteSpaceName,
+                            id: searchText?.id,
+                            text: noteSpaceName,
                           };
                         } else {
                           return notespace;
@@ -526,44 +561,9 @@ export default function Dashboard() {
                   }}
                   suppressContentEditableWarning
                 >
-                  {activeNoteSpace ? activeNoteSpace.name : "All Notes"}
+                  {searchText ? searchText.text : "All Notes"}
                 </Text>
               </Group>
-
-              {searchedText && (
-                <Box>
-                  <Text
-                    mb={4}
-                    fw={500}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    {" "}
-                    <IconSearch size={16} />
-                    Searched Text:
-                  </Text>
-                  <Text>{searchedText}</Text>
-                  <Divider my={24} />
-                </Box>
-              )}
-
-              {searchedText && (
-                <Text
-                  mb={4}
-                  fw={500}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <IconArticle size={16} />
-                  Related Notes:
-                </Text>
-              )}
               <Stack>
                 {notes.map((note, index) => {
                   return (
@@ -598,7 +598,7 @@ export default function Dashboard() {
                                 <IconSearch style={{ width: 16, height: 16 }} />
                               }
                               onClick={async (e) => {
-                                setActiveNoteSpace(null);
+                                setSearchText(null);
                                 setSearchedText(note.text);
                               }}
                             >
