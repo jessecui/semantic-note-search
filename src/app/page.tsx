@@ -33,6 +33,7 @@ import {
   IconArticle,
   IconCalendar,
   IconClipboardText,
+  IconCopy,
   IconDots,
   IconDotsVertical,
   IconInfoCircle,
@@ -83,11 +84,14 @@ export default function Dashboard() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    setNotes([]);
     const searchText = searchParams.get("search");
     if (searchText) {
-      setNotes([]);
       setSearchedText(searchText);
       setSearchText({ id: -1, text: searchText });
+    } else {
+      setSearchedText(null);
+      setSearchText(null);
     }
   }, [searchParams]);
 
@@ -277,11 +281,7 @@ export default function Dashboard() {
             align="center"
             mt={4}
             onClick={async () => {
-              if (searchText != null) {
-                setNotes([]);
-              }
-              setSearchedText(null);
-              setSearchText(null);
+              router.push("/");
             }}
             style={{ cursor: "pointer" }}
           >
@@ -358,7 +358,9 @@ export default function Dashboard() {
                     }}
                   >
                     <IconClipboardText size={16} />
-                    {savedSearch.text.length > 25 ? `${savedSearch.text.substring(0, 25)}...` : savedSearch.text}
+                    {savedSearch.text.length > 25
+                      ? `${savedSearch.text.substring(0, 25)}...`
+                      : savedSearch.text}
                   </Text>
                   {hoveredNoteSpaceId === savedSearch.id && (
                     <Menu offset={-8} position="bottom-start">
@@ -376,6 +378,22 @@ export default function Dashboard() {
                         </ActionIcon>
                       </MenuTarget>
                       <MenuDropdown>
+                        <MenuItem
+                          leftSection={
+                            <IconCopy style={{ width: 16, height: 16 }} />
+                          }
+                          onClick={async () => {
+                            await navigator.clipboard.writeText(
+                              `${
+                                process.env.NEXT_PUBLIC_SITE_DOMAIN
+                              }/?search=${encodeURIComponent(
+                                savedSearch.text,
+                              )}`,
+                            );
+                          }}
+                        >
+                          Copy link
+                        </MenuItem>
                         <MenuItem
                           leftSection={
                             <IconTrash style={{ width: 16, height: 16 }} />
@@ -465,31 +483,49 @@ export default function Dashboard() {
                       </ActionIcon>
                     </MenuTarget>
                     <MenuDropdown>
+                      {savedSearches.every(
+                        (savedSearch) => savedSearch.text !== searchText.text,
+                      ) && (
+                        <MenuItem
+                          leftSection={
+                            <IconPin style={{ width: 16, height: 16 }} />
+                          }
+                          onClick={async (e) => {
+                            // Add searchText to searches
+                            const embeddingResponse = await fetch(
+                              `/embed?text=${encodeURIComponent(
+                                searchText.text,
+                              )}`,
+                            );
+                            const embedding = await embeddingResponse.json();
+
+                            await supabaseClient!.from("Searches").insert({
+                              text: searchText.text,
+                              embedding: embedding,
+                            });
+
+                            setSavedSearches([
+                              { id: -1, text: searchText.text },
+                              ...savedSearches,
+                            ]);
+                          }}
+                        >
+                          Save Search
+                        </MenuItem>
+                      )}
                       <MenuItem
                         leftSection={
-                          <IconPin style={{ width: 16, height: 16 }} />
+                          <IconCopy style={{ width: 16, height: 16 }} />
                         }
-                        onClick={async (e) => {
-                          // Add searchText to searches
-                          const embeddingResponse = await fetch(
-                            `/embed?text=${encodeURIComponent(
-                              searchText.text,
-                            )}`,
+                        onClick={async () => {
+                          await navigator.clipboard.writeText(
+                            `${
+                              process.env.NEXT_PUBLIC_SITE_DOMAIN
+                            }/?search=${encodeURIComponent(searchText.text)}`,
                           );
-                          const embedding = await embeddingResponse.json();
-
-                          await supabaseClient!.from("Searches").insert({
-                            text: searchText.text,
-                            embedding: embedding,
-                          });
-
-                          setSavedSearches([
-                            { id: -1, text: searchText.text },
-                            ...savedSearches,
-                          ]);
                         }}
                       >
-                        Save Search
+                        Copy link
                       </MenuItem>
                     </MenuDropdown>
                   </Menu>
@@ -596,8 +632,9 @@ export default function Dashboard() {
                                 <IconSearch style={{ width: 16, height: 16 }} />
                               }
                               onClick={async (e) => {
-                                setSearchText(null);
-                                setSearchedText(note.text);
+                                router.push(
+                                  `/?search=${encodeURIComponent(note.text)}`,
+                                );
                               }}
                             >
                               Search for Similar Notes
