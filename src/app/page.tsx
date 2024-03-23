@@ -136,38 +136,41 @@ export default function Dashboard() {
     }
   }, [startDate, endDate, search, supabaseClient]);
 
-    // Update search state query param change
-    useEffect(() => {
-      setNotes([]);
-      const searchTextFromQueryParam = searchParams.get("search");
-      if (searchTextFromQueryParam) {
-        const searchId = savedSearches.find(
-          (search) => search.text === searchTextFromQueryParam,
-        )?.id;
-        setSearch({ id: searchId, text: searchTextFromQueryParam });
-      } else {
-        setSearch(null);
-      }
-    }, [searchParams, savedSearches]);
-      
-  
-    // Fetch saved searches
-    useEffect(() => {
-      const fetchSavedSearches = async () => {
-        if (supabaseClient) {
-          const { data, error } = await supabaseClient
-            .from("Searches")
-            .select("id, text")
-            .order("created_at", { ascending: false });
-  
-          if (error) console.log(error);
-          if (data) {
-            setSavedSearches(data);
-          }
+  // Clear existing notes on search change
+  useEffect(() => {
+    setNotes([]);
+  }, [searchParams]);
+
+  // Update search state query param change
+  useEffect(() => {
+    const searchTextFromQueryParam = searchParams.get("search");
+    if (searchTextFromQueryParam) {
+      const searchId = savedSearches.find(
+        (search) => search.text === searchTextFromQueryParam,
+      )?.id;
+      setSearch({ id: searchId, text: searchTextFromQueryParam });
+    } else {
+      setSearch(null);
+    }
+  }, [searchParams, savedSearches]);
+
+  // Fetch saved searches
+  useEffect(() => {
+    const fetchSavedSearches = async () => {
+      if (supabaseClient) {
+        const { data, error } = await supabaseClient
+          .from("Searches")
+          .select("id, text")
+          .order("created_at", { ascending: false });
+
+        if (error) console.log(error);
+        if (data) {
+          setSavedSearches(data);
         }
-      };
-      fetchSavedSearches();
-    }, [supabaseClient]);
+      }
+    };
+    fetchSavedSearches();
+  }, [supabaseClient]);
 
   return (
     <main>
@@ -339,9 +342,6 @@ export default function Dashboard() {
                               .eq("id", savedSearch.id);
 
                             if (!error) {
-                              if (search?.id == savedSearch.id) {
-                                setSearch(null);
-                              }
                               setSavedSearches(
                                 savedSearches.filter(
                                   (searchToKeep) =>
@@ -467,11 +467,7 @@ export default function Dashboard() {
                     style={{ cursor: search ? "pointer" : "default" }}
                   />
                 )}
-                <Text
-                  size="lg"
-                  fw={500}
-                  mb={24}                  
-                >
+                <Text size="lg" fw={500} mb={24}>
                   {search ? search.text : "All Notes"}
                 </Text>
               </Group>
@@ -521,59 +517,7 @@ export default function Dashboard() {
                       ) : (
                         <ActionIcon variant="subtle" />
                       )}
-                      <Text
-                        id={`note-${index}`}
-                        onBlur={async (e) => {
-                          const newNoteText = (e.target as HTMLElement)
-                            .innerText;
-
-                          if (newNoteText === "") {
-                            // Delete the note
-                            const newNotes = [...notes];
-                            newNotes.splice(index, 1);
-                            setNotes(newNotes);
-
-                            const { error } = await supabaseClient!
-                              .from("Notes")
-                              .delete()
-                              .eq("id", note.id);
-
-                            if (error) {
-                              console.log(error);
-                            }
-                          }
-
-                          // Update note in database
-                          const { data } = await supabaseClient!
-                            .from("Notes")
-                            .select("id")
-                            .eq("id", note.id);
-
-                          if (data && data.length) {
-                            let embedding = null;
-                            const embeddingResponse = await fetch(
-                              `/embed?text=${encodeURIComponent(newNoteText)}`,
-                            );
-                            embedding = await embeddingResponse.json();
-
-                            const { error } = await supabaseClient!
-                              .from("Notes")
-                              .update({ text: newNoteText, embedding })
-                              .eq("id", note.id);
-
-                            if (!error) {
-                              const newNotes = [...notes];
-                              newNotes[index] = {
-                                id: note.id,
-                                text: newNoteText,
-                              };
-                              setNotes(newNotes);
-                            }
-                          }
-                        }}
-                      >
-                        {note.text}
-                      </Text>
+                      <Text>{note.text}</Text>
                     </Group>
                   );
                 })}
