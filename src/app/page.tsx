@@ -2,7 +2,6 @@
 
 import {
   ActionIcon,
-  Alert,
   AppShell,
   AppShellMain,
   AppShellNavbar,
@@ -10,7 +9,6 @@ import {
   Button,
   Center,
   Container,
-  Divider,
   Flex,
   Group,
   Menu,
@@ -30,101 +28,81 @@ import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { SupabaseClient, createClient } from "@supabase/supabase-js";
 import {
-  IconArticle,
   IconCalendar,
   IconClipboardText,
   IconCopy,
   IconDots,
   IconDotsVertical,
-  IconInfoCircle,
   IconPin,
   IconSearch,
-  IconStack2,
   IconTrash,
 } from "@tabler/icons-react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Dashboard() {
-  // Notes state
-  const [notes, setNotes] = useState<{ id: any; text: any }[]>([]);
+  const [supabaseClient, setSupabaseClient] = useState<SupabaseClient>();
+  const theme = useMantineTheme();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  // Note space states
+  const [notes, setNotes] = useState<{ id: number; text: string }[]>([]);
   const [savedSearches, setSavedSearches] = useState<
     { id: any; text: string }[]
   >([]);
-  const [searchText, setSearchText] = useState<{
-    id: any;
-    text: string;
-  } | null>(null);
-  const [hoveredNoteSpaceId, setHoveredNoteSpaceId] = useState<Number | null>(
+
+  const [hoveredNoteTitle, setHoveredNoteTitle] = useState<boolean>(false);
+  const [hoveredNoteSearchId, setHoveredNoteSearchId] = useState<Number | null>(
     null,
   );
   const [hoveredNoteId, setHoveredNoteId] = useState<Number | null>(null);
-  const [hoveredNoteTitle, setHoveredNoteTitle] = useState<boolean>(false);
 
-  // Note navigation and filtering states
-  const [searchedText, setSearchedText] = useState<string | null>(null);
+  const [search, setSearch] = useState<{
+    id: number | null;
+    text: string;
+  } | null>(null);
 
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
 
   const [opened, { close }] = useDisclosure(true);
-  const form = useForm({
+  const loginForm = useForm({
     initialValues: {
       username: "",
       password: "",
     },
   });
 
-  const [supabaseClient, setSupabaseClient] = useState<SupabaseClient>();
-
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
+  // Fetch notes
   useEffect(() => {
-    setNotes([]);
-    const searchText = searchParams.get("search");
-    if (searchText) {
-      setSearchedText(searchText);
-      setSearchText({ id: -1, text: searchText });
-    } else {
-      setSearchedText(null);
-      setSearchText(null);
-    }
-  }, [searchParams]);
+    const searchNotes = async () => {
+      if (!supabaseClient || !search) {
+        return;
+      }
+      const embeddingResponse = await fetch(
+        `/embed?text=${encodeURIComponent(search.text)}`,
+      );
+      const embedding = await embeddingResponse.json();
 
-  // Dashboard refs
-  const editableNoteRef = useRef<HTMLDivElement>(null);
+      const { data, error } = await supabaseClient.rpc("match_notes", {
+        query_embedding: embedding,
+        match_threshold: 1.8,
+        match_count: 1000,
+        match_start: startDate?.toISOString(),
+        match_end: endDate?.toISOString(),
+      });
 
-  // Alert disclosure for notifying user of duplicate note creation
-  const [alertOpened, { open: openAlert, close: closeAlert }] =
-    useDisclosure(false);
-
-  const theme = useMantineTheme();
-
-  // Fetch initial note spaces
-  useEffect(() => {
-    const fetchNoteSpaces = async () => {
-      if (supabaseClient) {
-        const { data, error } = await supabaseClient
-          .from("Searches")
-          .select("id, text")
-          .order("created_at", { ascending: false });
-
-        if (error) console.log(error);
-        if (data) {
-          setSavedSearches(data);
-        }
+      if (error) {
+        console.log(error);
+        return;
+      }
+      if (data) {
+        setNotes(data);
       }
     };
-    fetchNoteSpaces();
-  }, [supabaseClient]);
 
-  // Fetch notes within note spaces
-  useEffect(() => {
-    const fetchAllNotesWithDates = async () => {
+    const getAllNotes = async () => {
       if (supabaseClient) {
         let query = supabaseClient.from("Notes").select("id, text");
 
@@ -151,80 +129,45 @@ export default function Dashboard() {
       }
     };
 
-    const fetchNotesWithinNoteSpaceWithDates = async () => {
-      if (searchText?.id && supabaseClient) {
-        let query = supabaseClient
-          .from("Note to Note Space")
-          .select("id, Notes (id, text)")
-          .eq("note_space_id", searchText.id);
-
-        if (startDate) {
-          const formattedStartDate = startDate.toISOString();
-          query = query.gte("created_at", formattedStartDate);
-        }
-
-        if (endDate) {
-          const formattedEndDate = new Date(
-            new Date(endDate).setDate(endDate.getDate() + 1),
-          ).toISOString();
-          query = query.lte("created_at", formattedEndDate);
-        }
-
-        query = query.order("created_at", { ascending: false });
-
-        const { data, error } = await query;
-
-        if (error) console.log(error);
-        if (data) {
-          const notes: { id: any; text: any }[] = data.flatMap((note) => {
-            return note.Notes;
-          });
-          setNotes(notes);
-        }
-      }
-    };
-
-    if (searchedText) {
-      return;
-    }
-
-    if (searchText) {
-      fetchNotesWithinNoteSpaceWithDates();
+    if (search) {
+      searchNotes();
     } else {
-      fetchAllNotesWithDates();
+      getAllNotes();
     }
-  }, [startDate, endDate, searchText, searchedText, supabaseClient]);
+  }, [startDate, endDate, search, supabaseClient]);
 
-  // Fetch notes when using main semantic search
-  useEffect(() => {
-    const semanticSearch = async () => {
-      if (!supabaseClient || !searchedText) {
-        return;
+    // Update search state query param change
+    useEffect(() => {
+      setNotes([]);
+      const searchTextFromQueryParam = searchParams.get("search");
+      if (searchTextFromQueryParam) {
+        const searchId = savedSearches.find(
+          (search) => search.text === searchTextFromQueryParam,
+        )?.id;
+        setSearch({ id: searchId, text: searchTextFromQueryParam });
+      } else {
+        setSearch(null);
       }
-      const embeddingResponse = await fetch(
-        `/embed?text=${encodeURIComponent(searchedText)}`,
-      );
-      const embedding = await embeddingResponse.json();
-
-      const { data, error } = await supabaseClient.rpc("match_notes", {
-        query_embedding: embedding,
-        match_threshold: 1.8,
-        match_count: 1000,
-        match_start: startDate?.toISOString(),
-        match_end: endDate?.toISOString(),
-      });
-
-      if (error) {
-        console.log(error);
-        return;
-      }
-      if (data) {
-        setNotes(data);
-      }
-    };
-
-    semanticSearch();
-  }, [searchedText, startDate, endDate, supabaseClient]);
+    }, [searchParams, savedSearches]);
+      
+  
+    // Fetch saved searches
+    useEffect(() => {
+      const fetchSavedSearches = async () => {
+        if (supabaseClient) {
+          const { data, error } = await supabaseClient
+            .from("Searches")
+            .select("id, text")
+            .order("created_at", { ascending: false });
+  
+          if (error) console.log(error);
+          if (data) {
+            setSavedSearches(data);
+          }
+        }
+      };
+      fetchSavedSearches();
+    }, [supabaseClient]);
 
   return (
     <main>
@@ -241,7 +184,7 @@ export default function Dashboard() {
         closeOnClickOutside={false}
       >
         <form
-          onSubmit={form.onSubmit(async ({ username, password }) => {
+          onSubmit={loginForm.onSubmit(async ({ username, password }) => {
             const response = await fetch(
               `/verify-login?username=${encodeURIComponent(
                 username,
@@ -258,7 +201,7 @@ export default function Dashboard() {
               );
               close();
             } else {
-              form.setErrors({
+              loginForm.setErrors({
                 password: "Invalid password",
               });
             }
@@ -267,7 +210,7 @@ export default function Dashboard() {
           <PasswordInput
             label="Password"
             placeholder="********"
-            {...form.getInputProps("password")}
+            {...loginForm.getInputProps("password")}
             mt={8}
           />
           <Center mt={24}>
@@ -276,7 +219,7 @@ export default function Dashboard() {
         </form>
       </Modal>
       <AppShell navbar={{ width: 285, breakpoint: "xs" }} padding="md">
-        <AppShellNavbar p="md" className="navbar">
+        <AppShellNavbar p="md">
           <Flex
             align="center"
             mt={4}
@@ -293,11 +236,7 @@ export default function Dashboard() {
               priority
             />
           </Flex>
-          <Box
-            mt={32}
-            style={{ overflow: "auto" }}
-            className="custom-scrollbar"
-          >
+          <Box mt={32} style={{ overflow: "auto" }}>
             <Stack gap={4} mb={32}>
               <DatePickerInput
                 leftSection={<IconCalendar size={16} />}
@@ -336,15 +275,10 @@ export default function Dashboard() {
                   justify="space-between"
                   align="center"
                   h="25px"
-                  onMouseEnter={() => setHoveredNoteSpaceId(savedSearch.id)}
-                  onMouseLeave={() => setHoveredNoteSpaceId(null)}
+                  onMouseEnter={() => setHoveredNoteSearchId(savedSearch.id)}
+                  onMouseLeave={() => setHoveredNoteSearchId(null)}
                 >
                   <Text
-                    className={
-                      savedSearch.id == searchText?.id
-                        ? "navlink-selected"
-                        : "navlink"
-                    }
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -362,7 +296,7 @@ export default function Dashboard() {
                       ? `${savedSearch.text.substring(0, 25)}...`
                       : savedSearch.text}
                   </Text>
-                  {hoveredNoteSpaceId === savedSearch.id && (
+                  {hoveredNoteSearchId === savedSearch.id && (
                     <Menu offset={-8} position="bottom-start">
                       <MenuTarget>
                         <ActionIcon
@@ -405,8 +339,8 @@ export default function Dashboard() {
                               .eq("id", savedSearch.id);
 
                             if (!error) {
-                              if (searchText?.id == savedSearch.id) {
-                                setSearchText(null);
+                              if (search?.id == savedSearch.id) {
+                                setSearch(null);
                               }
                               setSavedSearches(
                                 savedSearches.filter(
@@ -467,7 +401,7 @@ export default function Dashboard() {
                 pl={16}
                 pr={42}
               >
-                {hoveredNoteTitle && searchText ? (
+                {hoveredNoteTitle && search ? (
                   <Menu offset={4} position="left">
                     <MenuTarget>
                       <ActionIcon
@@ -484,7 +418,7 @@ export default function Dashboard() {
                     </MenuTarget>
                     <MenuDropdown>
                       {savedSearches.every(
-                        (savedSearch) => savedSearch.text !== searchText.text,
+                        (savedSearch) => savedSearch.text !== search.text,
                       ) && (
                         <MenuItem
                           leftSection={
@@ -493,19 +427,17 @@ export default function Dashboard() {
                           onClick={async (e) => {
                             // Add searchText to searches
                             const embeddingResponse = await fetch(
-                              `/embed?text=${encodeURIComponent(
-                                searchText.text,
-                              )}`,
+                              `/embed?text=${encodeURIComponent(search.text)}`,
                             );
                             const embedding = await embeddingResponse.json();
 
                             await supabaseClient!.from("Searches").insert({
-                              text: searchText.text,
+                              text: search.text,
                               embedding: embedding,
                             });
 
                             setSavedSearches([
-                              { id: -1, text: searchText.text },
+                              { id: -1, text: search.text },
                               ...savedSearches,
                             ]);
                           }}
@@ -521,7 +453,7 @@ export default function Dashboard() {
                           await navigator.clipboard.writeText(
                             `${
                               process.env.NEXT_PUBLIC_SITE_DOMAIN
-                            }/?search=${encodeURIComponent(searchText.text)}`,
+                            }/?search=${encodeURIComponent(search.text)}`,
                           );
                         }}
                       >
@@ -532,70 +464,15 @@ export default function Dashboard() {
                 ) : (
                   <ActionIcon
                     variant="transparent"
-                    style={{ cursor: searchText ? "pointer" : "default" }}
+                    style={{ cursor: search ? "pointer" : "default" }}
                   />
                 )}
                 <Text
-                  id="notespace-title"
                   size="lg"
                   fw={500}
-                  mb={24}
-                  className="text-box-edit"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      editableNoteRef.current?.focus();
-                    }
-                  }}
-                  onBlur={async (e) => {
-                    const noteSpaceName = (e.target as HTMLElement).innerText;
-
-                    // If notespace name already exists, reset the text
-                    if (
-                      noteSpaceName == "" ||
-                      savedSearches.find(
-                        (savedSearch) => savedSearch.text === noteSpaceName,
-                      )
-                    ) {
-                      (e.target as HTMLElement).innerText =
-                        searchText?.text as string;
-                      return;
-                    }
-
-                    const embeddingResponse = await fetch(
-                      `/embed?text=${encodeURIComponent(noteSpaceName)}`,
-                    );
-                    const embedding = await embeddingResponse.json();
-
-                    const { error } = await supabaseClient!
-                      .from("Queries")
-                      .update({ name: noteSpaceName, embedding: embedding })
-                      .eq("id", searchText?.id);
-
-                    if (error) {
-                      console.log(error);
-                      return;
-                    }
-                    setSearchText({
-                      id: searchText?.id,
-                      text: noteSpaceName,
-                    });
-                    setSavedSearches(
-                      savedSearches.map((notespace) => {
-                        if (notespace.id === searchText?.id) {
-                          return {
-                            id: searchText?.id,
-                            text: noteSpaceName,
-                          };
-                        } else {
-                          return notespace;
-                        }
-                      }),
-                    );
-                  }}
-                  suppressContentEditableWarning
+                  mb={24}                  
                 >
-                  {searchText ? searchText.text : "All Notes"}
+                  {search ? search.text : "All Notes"}
                 </Text>
               </Group>
               <Stack>
@@ -705,16 +582,6 @@ export default function Dashboard() {
           </Container>
         </AppShellMain>
       </AppShell>
-      <Modal opened={alertOpened} onClose={closeAlert} withCloseButton={false}>
-        <Alert
-          variant="light"
-          color="indigo"
-          title="Duplicate Note"
-          icon={<IconInfoCircle size={16} />}
-        >
-          The note you are trying to add is already in the current notespace.
-        </Alert>
-      </Modal>
     </main>
   );
 }
