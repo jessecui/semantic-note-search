@@ -18,6 +18,7 @@ import {
   Modal,
   Paper,
   PasswordInput,
+  Skeleton,
   Stack,
   Text,
   Textarea,
@@ -48,7 +49,7 @@ export default function Dashboard() {
   const searchParams = useSearchParams();
 
   const [notes, setNotes] = useState<
-    { id: number; text: string; date: string; score: number | null }[]
+    { id: number; text: string; date: string; score?: number }[] | null
   >([]);
   const [savedSearches, setSavedSearches] = useState<
     { id: any; text: string }[]
@@ -140,7 +141,7 @@ export default function Dashboard() {
 
   // Clear existing notes on search change
   useEffect(() => {
-    setNotes([]);
+    setNotes(null);
   }, [searchParams]);
 
   // Update search state query param change
@@ -483,66 +484,92 @@ export default function Dashboard() {
                 </Text>
               </Group>
               <Stack>
-                {notes.map((note, index) => {
-                  return (
-                    <Group
-                      key={index}
-                      wrap="nowrap"
-                      align="flex-start"
-                      onMouseEnter={() => setHoveredNoteId(note.id)}
-                      onMouseLeave={() => setHoveredNoteId(null)}
-                      gap={4}
-                      pl={16}
-                      pr={42}
-                    >
-                      {hoveredNoteId === note.id ? (
-                        <Menu offset={4} position="left">
-                          <MenuTarget>
-                            <ActionIcon
-                              variant="subtle"
-                              aria-label="Settings"
-                              color="gray"
-                              size="md"
-                            >
-                              <IconDotsVertical
-                                style={{ width: "70%", height: "70%" }}
-                                stroke={1.5}
-                              />
-                            </ActionIcon>
-                          </MenuTarget>
-                          <MenuDropdown>
-                            <MenuItem
-                              leftSection={
-                                <IconSearch style={{ width: 16, height: 16 }} />
-                              }
-                              onClick={async (e) => {
-                                router.push(
-                                  `/?search=${encodeURIComponent(note.text)}`,
-                                );
-                              }}
-                            >
-                              Search for similar notes
-                            </MenuItem>
-                            <Menu.Divider />
-                            <Stack px={12} py={2} gap={2}>
-                              {note.score && (
-                                <Text size="xs" fw="500" c="dark.2">
-                                  Similarity score: {note.score.toFixed(2)}
-                                </Text>
-                              )}
-                              <Text size="xs" fw="500" c="dark.2">
-                                Created on: {formatTimestamp(note.date)}
-                              </Text>
-                            </Stack>
-                          </MenuDropdown>
-                        </Menu>
-                      ) : (
-                        <ActionIcon variant="subtle" />
-                      )}
-                      <Text>{note.text}</Text>
-                    </Group>
-                  );
-                })}
+                {notes ? (
+                  <>
+                    {notes.map((note, index) => {
+                      return (
+                        <Group
+                          key={index}
+                          wrap="nowrap"
+                          align="flex-start"
+                          onMouseEnter={() => setHoveredNoteId(note.id)}
+                          onMouseLeave={() => setHoveredNoteId(null)}
+                          gap={4}
+                          pl={16}
+                          pr={42}
+                        >
+                          {hoveredNoteId === note.id ? (
+                            <Menu offset={4} position="left">
+                              <MenuTarget>
+                                <ActionIcon
+                                  variant="subtle"
+                                  aria-label="Settings"
+                                  color="gray"
+                                  size="md"
+                                >
+                                  <IconDotsVertical
+                                    style={{ width: "70%", height: "70%" }}
+                                    stroke={1.5}
+                                  />
+                                </ActionIcon>
+                              </MenuTarget>
+                              <MenuDropdown>
+                                <MenuItem
+                                  leftSection={
+                                    <IconSearch
+                                      style={{ width: 16, height: 16 }}
+                                    />
+                                  }
+                                  onClick={async (e) => {
+                                    router.push(
+                                      `/?search=${encodeURIComponent(
+                                        note.text,
+                                      )}`,
+                                    );
+                                  }}
+                                >
+                                  Search for similar notes
+                                </MenuItem>
+                                <Menu.Divider />
+                                <Stack px={12} py={2} gap={2}>
+                                  {note.score && (
+                                    <Text size="xs" fw="500" c="dark.2">
+                                      Similarity score: {note.score.toFixed(2)}
+                                    </Text>
+                                  )}
+                                  <Text size="xs" fw="500" c="dark.2">
+                                    Created on: {formatTimestamp(note.date)}
+                                  </Text>
+                                </Stack>
+                              </MenuDropdown>
+                            </Menu>
+                          ) : (
+                            <ActionIcon variant="subtle" />
+                          )}
+                          <Text>{note.text}</Text>
+                        </Group>
+                      );
+                    })}
+                  </>
+                ) : (
+                  <Stack gap={32}>
+                    <Stack gap={8}>
+                      <Skeleton ml={48} w={640} h="16" />
+                      <Skeleton ml={48} w={640} h="16" />
+                      <Skeleton ml={48} w={320} h="16" />
+                    </Stack>
+                    <Stack gap={8}>
+                      <Skeleton ml={48} w={640} h="16" />
+                      <Skeleton ml={48} w={640} h="16" />
+                      <Skeleton ml={48} w={320} h="16" />
+                    </Stack>
+                    <Stack gap={8}>
+                      <Skeleton ml={48} w={640} h="16" />
+                      <Skeleton ml={48} w={640} h="16" />
+                      <Skeleton ml={48} w={320} h="16" />
+                    </Stack>
+                  </Stack>
+                )}
               </Stack>
             </Paper>
           </Container>
