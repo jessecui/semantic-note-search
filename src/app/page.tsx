@@ -47,7 +47,9 @@ export default function Dashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [notes, setNotes] = useState<{ id: number; text: string }[]>([]);
+  const [notes, setNotes] = useState<
+    { id: number; text: string; date: string; score: number | null }[]
+  >([]);
   const [savedSearches, setSavedSearches] = useState<
     { id: any; text: string }[]
   >([]);
@@ -104,21 +106,21 @@ export default function Dashboard() {
 
     const getAllNotes = async () => {
       if (supabaseClient) {
-        let query = supabaseClient.from("Notes").select("id, text");
+        let query = supabaseClient.from("Notes").select("id, text, date");
 
         if (startDate) {
           const formattedStartDate = startDate.toISOString();
-          query = query.gte("created_at", formattedStartDate);
+          query = query.gte("date", formattedStartDate);
         }
 
         if (endDate) {
           const formattedEndDate = new Date(
             new Date(endDate).setDate(endDate.getDate() + 1),
           ).toISOString();
-          query = query.lte("created_at", formattedEndDate);
+          query = query.lte("date", formattedEndDate);
         }
 
-        query = query.order("created_at", { ascending: false });
+        query = query.order("date", { ascending: false });
 
         const { data, error } = await query;
 
@@ -161,7 +163,7 @@ export default function Dashboard() {
         const { data, error } = await supabaseClient
           .from("Searches")
           .select("id, text")
-          .order("created_at", { ascending: false });
+          .order("date", { ascending: false });
 
         if (error) console.log(error);
         if (data) {
@@ -171,6 +173,15 @@ export default function Dashboard() {
     };
     fetchSavedSearches();
   }, [supabaseClient]);
+
+  function formatTimestamp(timestampString: string) {
+    const date = new Date(timestampString);
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
 
   return (
     <main>
@@ -510,8 +521,19 @@ export default function Dashboard() {
                                 );
                               }}
                             >
-                              Search for Similar Notes
+                              Search for similar notes
                             </MenuItem>
+                            <Menu.Divider />
+                            <Stack px={12} py={2} gap={2}>
+                              {note.score && (
+                                <Text size="xs" fw="500" c="dark.2">
+                                  Similarity score: {note.score.toFixed(2)}
+                                </Text>
+                              )}
+                              <Text size="xs" fw="500" c="dark.2">
+                                Created on: {formatTimestamp(note.date)}
+                              </Text>
+                            </Stack>
                           </MenuDropdown>
                         </Menu>
                       ) : (
