@@ -328,14 +328,16 @@ export default function Dashboard() {
                   h="25px"
                   onMouseEnter={() => setHoveredNoteSearchId(savedSearch.id)}
                   onMouseLeave={() => setHoveredNoteSearchId(null)}
+                  bg={
+                    savedSearch.id == hoveredNoteSearchId ||
+                    savedSearch.text === search?.text
+                      ? "dark.6"
+                      : "transparent"
+                  }
+                  style={{ borderRadius: 4, cursor: "pointer" }}
                 >
-                  <Text
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      cursor: "pointer",
-                    }}
+                  <Flex
+                    style={{ alignItems: "center", gap: 8 }}
                     onClick={() => {
                       router.push(
                         `/?search=${encodeURIComponent(savedSearch.text)}`,
@@ -344,10 +346,17 @@ export default function Dashboard() {
                     }}
                   >
                     <IconClipboardText size={16} />
-                    {savedSearch.text.length > 25
-                      ? `${savedSearch.text.substring(0, 24)}...`
-                      : savedSearch.text}
-                  </Text>
+                    <Text
+                      style={{
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        width: isMobile ? "75vw" : "200px",
+                      }}
+                    >
+                      {savedSearch.text}
+                    </Text>
+                  </Flex>
                   {hoveredNoteSearchId === savedSearch.id && (
                     <Menu offset={-8} position="bottom-start">
                       <MenuTarget>
@@ -596,19 +605,55 @@ export default function Dashboard() {
                 ) : (
                   <Stack gap={32}>
                     <Stack gap={8}>
-                      <Skeleton ml={48} w={isMobile ? 320 : 640} h="16" />
-                      <Skeleton ml={48} w={isMobile ? 320 : 640} h="16" />
-                      <Skeleton ml={48} w={isMobile ? 160 : 320} h="16" />
+                      <Skeleton
+                        ml={48}
+                        w={isMobile ? "calc(100vw - 128px)" : 660}
+                        h="16"
+                      />
+                      <Skeleton
+                        ml={48}
+                        w={isMobile ? "calc(100vw - 128px)" : 660}
+                        h="16"
+                      />
+                      <Skeleton
+                        ml={48}
+                        w={isMobile ? "calc(0.5 * (100vw - 128px))" : 330}
+                        h="16"
+                      />
                     </Stack>
                     <Stack gap={8}>
-                      <Skeleton ml={48} w={isMobile ? 320 : 640} h="16" />
-                      <Skeleton ml={48} w={isMobile ? 320 : 640} h="16" />
-                      <Skeleton ml={48} w={isMobile ? 160 : 320} h="16" />
+                      <Skeleton
+                        ml={48}
+                        w={isMobile ? "calc(100vw - 128px)" : 660}
+                        h="16"
+                      />
+                      <Skeleton
+                        ml={48}
+                        w={isMobile ? "calc(100vw - 128px)" : 660}
+                        h="16"
+                      />
+                      <Skeleton
+                        ml={48}
+                        w={isMobile ? "calc(0.5 * (100vw - 128px))" : 330}
+                        h="16"
+                      />
                     </Stack>
                     <Stack gap={8}>
-                      <Skeleton ml={48} w={isMobile ? 320 : 640} h="16" />
-                      <Skeleton ml={48} w={isMobile ? 320 : 640} h="16" />
-                      <Skeleton ml={48} w={isMobile ? 160 : 320} h="16" />
+                      <Skeleton
+                        ml={48}
+                        w={isMobile ? "calc(100vw - 128px)" : 660}
+                        h="16"
+                      />
+                      <Skeleton
+                        ml={48}
+                        w={isMobile ? "calc(100vw - 128px)" : 660}
+                        h="16"
+                      />
+                      <Skeleton
+                        ml={48}
+                        w={isMobile ? "calc(0.5 * (100vw - 128px))" : 330}
+                        h="16"
+                      />
                     </Stack>
                   </Stack>
                 )}
