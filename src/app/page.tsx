@@ -3,9 +3,11 @@
 import {
   ActionIcon,
   AppShell,
+  AppShellHeader,
   AppShellMain,
   AppShellNavbar,
   Box,
+  Burger,
   Button,
   Center,
   Container,
@@ -27,6 +29,7 @@ import { useMantineTheme } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
+import { useMediaQuery } from "@mantine/hooks";
 import { SupabaseClient, createClient } from "@supabase/supabase-js";
 import {
   IconCalendar,
@@ -69,13 +72,17 @@ export default function Dashboard() {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
 
-  const [opened, { close }] = useDisclosure(true);
+  const [authFormOpened, { close: closeAuthForm }] = useDisclosure(true);
   const loginForm = useForm({
     initialValues: {
       username: "",
       password: "",
     },
   });
+
+  const [navbarOpened, { toggle: toggleNavbar }] = useDisclosure();
+
+  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.xs})`);
 
   // Fetch notes
   useEffect(() => {
@@ -187,8 +194,8 @@ export default function Dashboard() {
   return (
     <main>
       <Modal
-        opened={opened}
-        onClose={close}
+        opened={authFormOpened}
+        onClose={closeAuthForm}
         withCloseButton={false}
         yOffset="15vh"
         overlayProps={{
@@ -214,7 +221,7 @@ export default function Dashboard() {
                   supabaseCredentials.supabaseKey,
                 ),
               );
-              close();
+              closeAuthForm();
             } else {
               loginForm.setErrors({
                 password: "Invalid password",
@@ -233,15 +240,44 @@ export default function Dashboard() {
           </Center>
         </form>
       </Modal>
-      <AppShell navbar={{ width: 285, breakpoint: "xs" }} padding="md">
+      <AppShell
+        header={{
+          height: 48,
+          collapsed: !isMobile,
+        }}
+        navbar={{
+          width: 285,
+          breakpoint: "xs",
+          collapsed: { mobile: !navbarOpened },
+        }}
+        padding="md"
+      >
+        <AppShellHeader px="md" display="flex" style={{ alignItems: "center" }}>
+          <Burger
+            opened={navbarOpened}
+            onClick={toggleNavbar}
+            hiddenFrom="sm"
+            size="sm"
+            mr={8}
+          />
+          <Image
+            src="/notesearch-logo.png"
+            alt="NoteSearch Logo"
+            width={125}
+            height={25}
+            priority
+          />
+        </AppShellHeader>
         <AppShellNavbar p="md">
           <Flex
             align="center"
             mt={4}
+            mb={32}
             onClick={async () => {
               router.push("/");
             }}
             style={{ cursor: "pointer" }}
+            visibleFrom="xs"
           >
             <Image
               src="/notesearch-logo.png"
@@ -251,7 +287,7 @@ export default function Dashboard() {
               priority
             />
           </Flex>
-          <Box mt={32} style={{ overflow: "auto" }}>
+          <Box style={{ overflow: "auto" }}>
             <Stack gap={4} mb={32}>
               <DatePickerInput
                 leftSection={<IconCalendar size={16} />}
@@ -304,11 +340,12 @@ export default function Dashboard() {
                       router.push(
                         `/?search=${encodeURIComponent(savedSearch.text)}`,
                       );
+                      if (isMobile) toggleNavbar();
                     }}
                   >
                     <IconClipboardText size={16} />
                     {savedSearch.text.length > 25
-                      ? `${savedSearch.text.substring(0, 25)}...`
+                      ? `${savedSearch.text.substring(0, 24)}...`
                       : savedSearch.text}
                   </Text>
                   {hoveredNoteSearchId === savedSearch.id && (
@@ -374,7 +411,11 @@ export default function Dashboard() {
           </Box>
         </AppShellNavbar>
         <AppShellMain bg="dark.8">
-          <Container h={"95vh"} w={768}>
+          <Container
+            h={isMobile ? "calc(100vh - 4em)" : "95vh"}
+            w={isMobile ? "100%" : 768}
+            px={0}
+          >
             <Textarea
               rows={1}
               autosize
@@ -385,7 +426,7 @@ export default function Dashboard() {
                   size={16}
                 />
               }
-              mb={32}
+              mb={isMobile ? 16 : 32}
               onKeyDown={async (e) => {
                 if (e.key == "Enter") {
                   e.preventDefault();
@@ -531,14 +572,15 @@ export default function Dashboard() {
                                   Search for similar notes
                                 </MenuItem>
                                 <Menu.Divider />
-                                <Stack px={12} py={2} gap={2}>
+                                <Stack px={12} pt={4} pb={2} gap={2}>
                                   {note.score && (
                                     <Text size="xs" fw="500" c="dark.2">
-                                      Similarity score: {note.score.toFixed(2)}
+                                      Similarity score:{" "}
+                                      {(note.score / 2).toFixed(2)}
                                     </Text>
                                   )}
                                   <Text size="xs" fw="500" c="dark.2">
-                                    Created on: {formatTimestamp(note.date)}
+                                    Created: {formatTimestamp(note.date)}
                                   </Text>
                                 </Stack>
                               </MenuDropdown>
@@ -554,19 +596,19 @@ export default function Dashboard() {
                 ) : (
                   <Stack gap={32}>
                     <Stack gap={8}>
-                      <Skeleton ml={48} w={640} h="16" />
-                      <Skeleton ml={48} w={640} h="16" />
-                      <Skeleton ml={48} w={320} h="16" />
+                      <Skeleton ml={48} w={isMobile ? 320 : 640} h="16" />
+                      <Skeleton ml={48} w={isMobile ? 320 : 640} h="16" />
+                      <Skeleton ml={48} w={isMobile ? 160 : 320} h="16" />
                     </Stack>
                     <Stack gap={8}>
-                      <Skeleton ml={48} w={640} h="16" />
-                      <Skeleton ml={48} w={640} h="16" />
-                      <Skeleton ml={48} w={320} h="16" />
+                      <Skeleton ml={48} w={isMobile ? 320 : 640} h="16" />
+                      <Skeleton ml={48} w={isMobile ? 320 : 640} h="16" />
+                      <Skeleton ml={48} w={isMobile ? 160 : 320} h="16" />
                     </Stack>
                     <Stack gap={8}>
-                      <Skeleton ml={48} w={640} h="16" />
-                      <Skeleton ml={48} w={640} h="16" />
-                      <Skeleton ml={48} w={320} h="16" />
+                      <Skeleton ml={48} w={isMobile ? 320 : 640} h="16" />
+                      <Skeleton ml={48} w={isMobile ? 320 : 640} h="16" />
+                      <Skeleton ml={48} w={isMobile ? 160 : 320} h="16" />
                     </Stack>
                   </Stack>
                 )}
