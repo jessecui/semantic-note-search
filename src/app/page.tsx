@@ -385,6 +385,7 @@ export default function Dashboard() {
                                 savedSearch.text,
                               )}`,
                             );
+                            setHoveredNoteSearchId(null)
                           }}
                         >
                           Copy link
@@ -502,6 +503,7 @@ export default function Dashboard() {
                               { id: -1, text: search.text },
                               ...savedSearches,
                             ]);
+                            setHoveredNoteTitle(false);
                           }}
                         >
                           Save Search
@@ -517,6 +519,7 @@ export default function Dashboard() {
                               process.env.NEXT_PUBLIC_SITE_DOMAIN
                             }/?search=${encodeURIComponent(search.text)}`,
                           );
+                          setHoveredNoteTitle(false);
                         }}
                       >
                         Copy link
