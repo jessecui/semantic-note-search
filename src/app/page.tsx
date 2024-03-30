@@ -98,7 +98,7 @@ export default function Dashboard() {
       const { data, error } = await supabaseClient.rpc("match_notes", {
         query_embedding: embedding,
         match_threshold: 1.8,
-        match_count: 1000,
+        match_count: 10000,
         match_start: startDate?.toISOString(),
         match_end: endDate?.toISOString(),
       });
@@ -422,7 +422,7 @@ export default function Dashboard() {
         </AppShellNavbar>
         <AppShellMain bg="dark.8">
           <Container
-            h={isMobile ? "calc(100vh - 4em)" : "95vh"}
+            h={"calc(100vh - 8em)"}
             w={isMobile ? "100%" : 768}
             px={0}
           >
@@ -451,7 +451,7 @@ export default function Dashboard() {
               withBorder
               px={4}
               py={36}
-              h={"90%"}
+              h={"100%"}
               style={{ overflow: "auto" }}
               bg="dark.8"
             >
