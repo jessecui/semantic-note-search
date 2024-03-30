@@ -385,7 +385,7 @@ export default function Dashboard() {
                                 savedSearch.text,
                               )}`,
                             );
-                            setHoveredNoteSearchId(null)
+                            setHoveredNoteSearchId(null);
                           }}
                         >
                           Copy link
@@ -422,7 +422,7 @@ export default function Dashboard() {
         </AppShellNavbar>
         <AppShellMain bg="dark.8">
           <Container
-            h={"calc(100vh - 8em)"}
+            h={`calc(100vh - ${isMobile ? 8 : 7.5}em)`}
             w={isMobile ? "100%" : 768}
             px={0}
           >
