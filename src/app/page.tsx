@@ -75,7 +75,6 @@ export default function Dashboard() {
   const [authFormOpened, { close: closeAuthForm }] = useDisclosure(true);
   const loginForm = useForm({
     initialValues: {
-      username: "",
       password: "",
     },
   });
@@ -93,12 +92,12 @@ export default function Dashboard() {
       const embeddingResponse = await fetch(
         `/embed?text=${encodeURIComponent(search.text)}`,
       );
-      const embedding = await embeddingResponse.json();
+      const {embedding} = await embeddingResponse.json();
 
       const { data, error } = await supabaseClient.rpc("match_notes", {
         query_embedding: embedding,
-        match_threshold: 1.8,
-        match_count: 10000,
+        match_threshold: 0.70,
+        match_count: 1000,
         match_start: startDate?.toISOString(),
         match_end: endDate?.toISOString(),
       });
@@ -206,11 +205,9 @@ export default function Dashboard() {
         closeOnClickOutside={false}
       >
         <form
-          onSubmit={loginForm.onSubmit(async ({ username, password }) => {
+          onSubmit={loginForm.onSubmit(async ({ password }) => {
             const response = await fetch(
-              `/verify-login?username=${encodeURIComponent(
-                username,
-              )}&password=${encodeURIComponent(password)}`,
+              `/verify-login?password=${encodeURIComponent(password)}`,
             );
             const { verified, supabaseCredentials } = await response.json();
 
@@ -488,15 +485,8 @@ export default function Dashboard() {
                             <IconPin style={{ width: 16, height: 16 }} />
                           }
                           onClick={async (e) => {
-                            // Add searchText to searches
-                            const embeddingResponse = await fetch(
-                              `/embed?text=${encodeURIComponent(search.text)}`,
-                            );
-                            const embedding = await embeddingResponse.json();
-
                             await supabaseClient!.from("Searches").insert({
                               text: search.text,
-                              embedding: embedding,
                             });
 
                             setSavedSearches([
@@ -588,7 +578,7 @@ export default function Dashboard() {
                                   {note.score && (
                                     <Text size="xs" fw="500" c="dark.2">
                                       Similarity score:{" "}
-                                      {(note.score / 2).toFixed(2)}
+                                      {(note.score).toFixed(3)}
                                     </Text>
                                   )}
                                   <Text size="xs" fw="500" c="dark.2">

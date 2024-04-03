@@ -17,6 +17,7 @@
     "@tabler/icons-react": "^2.40.0",
     "@xenova/transformers": "^2.9.0",
     "next": "14.0.2",
+    "node-fetch": "^3.3.2",
     "react": "^18",
     "react-dom": "^18"
   },
