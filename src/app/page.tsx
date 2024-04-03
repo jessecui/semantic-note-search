@@ -13,6 +13,7 @@ import {
   Container,
   Flex,
   Group,
+  Loader,
   Menu,
   MenuDropdown,
   MenuItem,
@@ -43,7 +44,7 @@ import {
 } from "@tabler/icons-react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export default function Dashboard() {
   const [supabaseClient, setSupabaseClient] = useState<SupabaseClient>();
@@ -80,8 +81,28 @@ export default function Dashboard() {
   });
 
   const [navbarOpened, { toggle: toggleNavbar }] = useDisclosure();
-
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.xs})`);
+
+  const pageSize = 100;
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+
+  const observer = useRef<IntersectionObserver | null>(null);
+  const lastNoteElementRef = useCallback(
+    (node: Element | null) => {      
+      if (observer.current) observer.current.disconnect();
+
+      observer.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMore) {          
+          setPage((prevPage) => prevPage + 1);
+        }
+      });
+
+      if (node) observer.current.observe(node);
+    },
+    [hasMore],
+  );
 
   // Fetch notes
   useEffect(() => {
@@ -111,31 +132,44 @@ export default function Dashboard() {
       }
     };
 
-    const getAllNotes = async () => {
-      if (supabaseClient) {
-        let query = supabaseClient.from("Notes").select("id, text, date");
-
-        if (startDate) {
-          const formattedStartDate = startDate.toISOString();
-          query = query.gte("date", formattedStartDate);
-        }
-
-        if (endDate) {
-          const formattedEndDate = new Date(
-            new Date(endDate).setDate(endDate.getDate() + 1),
-          ).toISOString();
-          query = query.lte("date", formattedEndDate);
-        }
-
-        query = query.order("date", { ascending: false });
-
-        const { data, error } = await query;
-
-        if (error) console.log(error);
-        if (data) {
-          setNotes(data);
-        }
+    const getAllNotes = async () => {      
+      if (!supabaseClient) {
+        return;
       }
+
+      setLoading(true);
+
+      let query = supabaseClient
+        .from("Notes")
+        .select("id, text, date")
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      if (startDate) {
+        const formattedStartDate = startDate.toISOString();
+        query = query.gte("date", formattedStartDate);
+      }
+
+      if (endDate) {
+        const formattedEndDate = new Date(
+          new Date(endDate).setDate(endDate.getDate() + 1),
+        ).toISOString();
+        query = query.lte("date", formattedEndDate);
+      }
+
+      query = query.order("date", { ascending: false });
+
+      const { data, error } = await query;
+
+      if (data) {
+        setNotes((prevNotes) => (prevNotes ? [...prevNotes, ...data] : data));
+        setHasMore(data.length === pageSize);
+      }
+
+      if (error) {
+        console.log(error);
+      }
+
+      setLoading(false);
     };
 
     if (search) {
@@ -143,7 +177,7 @@ export default function Dashboard() {
     } else {
       getAllNotes();
     }
-  }, [startDate, endDate, search, supabaseClient]);
+  }, [startDate, endDate, search, supabaseClient, page]);
 
   // Clear existing notes on search change
   useEffect(() => {
@@ -541,7 +575,12 @@ export default function Dashboard() {
                     {notes.map((note, index) => {
                       return (
                         <Group
-                          key={index}
+                          key={note.id}
+                          ref={
+                            notes.length === index + 1
+                              ? lastNoteElementRef
+                              : null
+                          }
                           wrap="nowrap"
                           align="flex-start"
                           onMouseEnter={() => setHoveredNoteId(note.id)}
@@ -602,6 +641,11 @@ export default function Dashboard() {
                         </Group>
                       );
                     })}
+                    {loading && (
+                      <Center>
+                        <Loader color="dark.2" />
+                      </Center>
+                    )}
                   </>
                 ) : (
                   <Stack gap={32}>
