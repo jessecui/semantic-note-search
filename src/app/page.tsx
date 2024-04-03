@@ -306,6 +306,9 @@ export default function Dashboard() {
             width={125}
             height={25}
             priority
+            onClick={async () => {
+              router.push("/");
+            }}
           />
         </AppShellHeader>
         <AppShellNavbar p="md">
