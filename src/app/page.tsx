@@ -90,11 +90,11 @@ export default function Dashboard() {
 
   const observer = useRef<IntersectionObserver | null>(null);
   const lastNoteElementRef = useCallback(
-    (node: Element | null) => {      
+    (node: Element | null) => {
       if (observer.current) observer.current.disconnect();
 
       observer.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && hasMore) {          
+        if (entries[0].isIntersecting && hasMore) {
           setPage((prevPage) => prevPage + 1);
         }
       });
@@ -110,29 +110,36 @@ export default function Dashboard() {
       if (!supabaseClient || !search) {
         return;
       }
+
+      setLoading(true);
+
       const embeddingResponse = await fetch(
         `/embed?text=${encodeURIComponent(search.text)}`,
       );
       const { embedding } = await embeddingResponse.json();
 
       const { data, error } = await supabaseClient.rpc("match_notes", {
-        query_embedding: embedding,
-        match_threshold: 0.7,
-        match_count: 1000,
+        search_embedding: embedding,
+        score_minimum: 0.7,
+        page: page,
+        page_size: pageSize,
         match_start: startDate?.toISOString(),
         match_end: endDate?.toISOString(),
-      });
+      });      
+      
+      if (data) {
+        setNotes((prevNotes) => (prevNotes ? [...prevNotes, ...data] : data));
+        setHasMore(data.length === pageSize);
+      }
 
       if (error) {
         console.log(error);
-        return;
       }
-      if (data) {
-        setNotes(data);
-      }
+
+      setLoading(false);
     };
 
-    const getAllNotes = async () => {      
+    const getAllNotes = async () => {
       if (!supabaseClient) {
         return;
       }
@@ -182,6 +189,8 @@ export default function Dashboard() {
   // Clear existing notes on search change
   useEffect(() => {
     setNotes(null);
+    setPage(0);
+    setHasMore(true);    
   }, [searchParams]);
 
   // Update search state query param change
