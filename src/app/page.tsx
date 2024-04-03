@@ -186,12 +186,13 @@ export default function Dashboard() {
     }
   }, [startDate, endDate, search, supabaseClient, page]);
 
-  // Clear existing notes on search change
+  // Clear existing notes on search or date change
   useEffect(() => {
     setNotes(null);
     setPage(0);
     setHasMore(true);
-  }, [searchParams]);
+  }, [searchParams, startDate, endDate]);  
+
 
   // Update search state query param change
   useEffect(() => {
