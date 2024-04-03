@@ -92,11 +92,11 @@ export default function Dashboard() {
       const embeddingResponse = await fetch(
         `/embed?text=${encodeURIComponent(search.text)}`,
       );
-      const {embedding} = await embeddingResponse.json();
+      const { embedding } = await embeddingResponse.json();
 
       const { data, error } = await supabaseClient.rpc("match_notes", {
         query_embedding: embedding,
-        match_threshold: 0.70,
+        match_threshold: 0.7,
         match_count: 1000,
         match_start: startDate?.toISOString(),
         match_end: endDate?.toISOString(),
@@ -313,7 +313,7 @@ export default function Dashboard() {
                 }}
               />
             </Stack>
-            <Stack gap={4} mt={8}>
+            <Stack gap={8} mt={8}>
               <Text fz="sm" fw="500" c="dark.2">
                 Saved Searches
               </Text>
@@ -485,12 +485,21 @@ export default function Dashboard() {
                             <IconPin style={{ width: 16, height: 16 }} />
                           }
                           onClick={async (e) => {
-                            await supabaseClient!.from("Searches").insert({
-                              text: search.text,
-                            });
+                            const { data, error } = await supabaseClient!
+                              .from("Searches")
+                              .insert({
+                                text: search.text,
+                              })
+                              .select("id")
+                              .single();
+
+                            if (error) {
+                              console.log(error);
+                              return;
+                            }
 
                             setSavedSearches([
-                              { id: -1, text: search.text },
+                              { id: data.id, text: search.text },
                               ...savedSearches,
                             ]);
                             setHoveredNoteTitle(false);
@@ -577,8 +586,7 @@ export default function Dashboard() {
                                 <Stack px={12} pt={4} pb={2} gap={2}>
                                   {note.score && (
                                     <Text size="xs" fw="500" c="dark.2">
-                                      Similarity score:{" "}
-                                      {(note.score).toFixed(3)}
+                                      Similarity score: {note.score.toFixed(3)}
                                     </Text>
                                   )}
                                   <Text size="xs" fw="500" c="dark.2">
