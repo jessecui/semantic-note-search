@@ -125,8 +125,8 @@ export default function Dashboard() {
         page_size: pageSize,
         match_start: startDate?.toISOString(),
         match_end: endDate?.toISOString(),
-      });      
-      
+      });
+
       if (data) {
         setNotes((prevNotes) => (prevNotes ? [...prevNotes, ...data] : data));
         setHasMore(data.length === pageSize);
@@ -190,7 +190,7 @@ export default function Dashboard() {
   useEffect(() => {
     setNotes(null);
     setPage(0);
-    setHasMore(true);    
+    setHasMore(true);
   }, [searchParams]);
 
   // Update search state query param change
