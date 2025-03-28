@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import fetch from 'node-fetch';
 
+interface HuggingFaceResponse {
+    [key: number]: number;
+}
+
 export async function GET(request: NextRequest) {    
     const text = request.nextUrl.searchParams.get('text');
     
@@ -10,22 +14,24 @@ export async function GET(request: NextRequest) {
         }, { status: 400 });
     }
 
-    const requestBody = {
-        input: [text],
-        model: 'voyage-large-2'
-    };
+    const response = await fetch(
+        "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2",
+        {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                inputs: text,
+                options: {
+                    wait_for_model: true
+                }
+            }),
+        }
+    );
 
-    const response = await fetch('https://api.voyageai.com/v1/embeddings', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${"pa-W8QFeZBxvxxYeH0XkdddM_VQyprLhYxpim3f1fN8IUw"}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-    });
+    const embedding = await response.json() as HuggingFaceResponse[];    
 
-    const embedding_response = await response.json();
-    const embedding = (embedding_response as any).data[0].embedding;
-
-    return NextResponse.json({embedding});
+    return NextResponse.json({embedding:embedding});
 }

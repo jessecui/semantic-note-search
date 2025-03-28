@@ -29,8 +29,7 @@ import {
 import { useMantineTheme } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
-import { useDisclosure } from "@mantine/hooks";
-import { useMediaQuery } from "@mantine/hooks";
+import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { SupabaseClient, createClient } from "@supabase/supabase-js";
 import {
   IconCalendar,
@@ -46,49 +45,64 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+// Types
+interface Note {
+  id: number;
+  text: string;
+  date: string;
+  score?: number;
+}
+
+interface SavedSearch {
+  id: any;
+  text: string;
+}
+
+interface SearchState {
+  id: number | null;
+  text: string;
+}
+
 export default function Dashboard() {
-  const [supabaseClient, setSupabaseClient] = useState<SupabaseClient>();
+  // Theme and routing
   const theme = useMantineTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.xs})`);
 
-  const [notes, setNotes] = useState<
-    { id: number; text: string; date: string; score?: number }[] | null
-  >([]);
-  const [savedSearches, setSavedSearches] = useState<
-    { id: any; text: string }[]
-  >([]);
+  // Supabase client
+  const [supabaseClient, setSupabaseClient] = useState<SupabaseClient>();
 
-  const [hoveredNoteTitle, setHoveredNoteTitle] = useState<boolean>(false);
-  const [hoveredNoteSearchId, setHoveredNoteSearchId] = useState<Number | null>(
-    null,
-  );
-  const [hoveredNoteId, setHoveredNoteId] = useState<Number | null>(null);
-
-  const [search, setSearch] = useState<{
-    id: number | null;
-    text: string;
-  } | null>(null);
-
+  // State management
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
+  const [search, setSearch] = useState<SearchState | null>(null);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
 
+  // UI state
+  const [hoveredNoteTitle, setHoveredNoteTitle] = useState<boolean>(false);
+  const [hoveredNoteSearchId, setHoveredNoteSearchId] = useState<Number | null>(null);
+  const [hoveredNoteId, setHoveredNoteId] = useState<Number | null>(null);
+  const [navbarOpened, { toggle: toggleNavbar }] = useDisclosure();
   const [authFormOpened, { close: closeAuthForm }] = useDisclosure(true);
+
+  // Form and refs
   const loginForm = useForm({
     initialValues: {
       password: "",
     },
   });
-
-  const [navbarOpened, { toggle: toggleNavbar }] = useDisclosure();
-  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.xs})`);
-
-  const pageSize = 100;
-  const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-
   const observer = useRef<IntersectionObserver | null>(null);
+  const editableNoteRef = useRef<HTMLParagraphElement>(null);
+
+  // Constants
+  const pageSize = 100;
+
+  // Intersection Observer for infinite scroll
   const lastNoteElementRef = useCallback(
     (node: Element | null) => {
       if (observer.current) observer.current.disconnect();
@@ -104,7 +118,18 @@ export default function Dashboard() {
     [hasMore],
   );
 
-  // Fetch notes
+  // Utility functions
+  function formatTimestamp(timestampString: string) {
+    const date = new Date(timestampString);
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+
+  // Effects
+  // Fetch notes based on search or date filters
   useEffect(() => {
     const searchNotes = async () => {
       if (!supabaseClient || !search) {
@@ -120,7 +145,7 @@ export default function Dashboard() {
 
       const { data, error } = await supabaseClient.rpc("match_notes", {
         search_embedding: embedding,
-        score_minimum: 0.7,
+        score_minimum: 0.25,
         page: page,
         page_size: pageSize,
         match_start: startDate?.toISOString(),
@@ -128,7 +153,14 @@ export default function Dashboard() {
       });
 
       if (data) {
-        setNotes((prevNotes) => (prevNotes ? [...prevNotes, ...data] : data));
+        setNotes((prevNotes) => {
+          if (!prevNotes) return data;
+          // Filter out any notes that already exist in prevNotes
+          const newNotes = data.filter(
+            (newNote: Note) => !prevNotes.some((prevNote) => prevNote.id === newNote.id)
+          );
+          return [...prevNotes, ...newNotes];
+        });
         setHasMore(data.length === pageSize);
       }
 
@@ -147,7 +179,7 @@ export default function Dashboard() {
       setLoading(true);
 
       let query = supabaseClient
-        .from("Notes")
+        .from("notes")
         .select("id, text, date")
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
@@ -186,15 +218,14 @@ export default function Dashboard() {
     }
   }, [startDate, endDate, search, supabaseClient, page]);
 
-  // Clear existing notes on search or date change
+  // Reset notes when search or date filters change
   useEffect(() => {
-    setNotes(null);
+    setNotes([]);
     setPage(0);
     setHasMore(true);
-  }, [searchParams, startDate, endDate]);  
+  }, [searchParams, startDate, endDate]);
 
-
-  // Update search state query param change
+  // Update search state from URL params
   useEffect(() => {
     const searchTextFromQueryParam = searchParams.get("search");
     if (searchTextFromQueryParam) {
@@ -212,7 +243,7 @@ export default function Dashboard() {
     const fetchSavedSearches = async () => {
       if (supabaseClient) {
         const { data, error } = await supabaseClient
-          .from("Searches")
+          .from("searches")
           .select("id, text")
           .order("date", { ascending: false });
 
@@ -225,17 +256,16 @@ export default function Dashboard() {
     fetchSavedSearches();
   }, [supabaseClient]);
 
-  function formatTimestamp(timestampString: string) {
-    const date = new Date(timestampString);
-    return date.toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  }
-
   return (
     <main>
+      <style jsx global>{`
+        .text-box-edit[data-placeholder]:empty:before {
+          content: attr(data-placeholder);
+          color: var(--mantine-color-gray-6);
+        }
+      `}</style>
+
+      {/* Authentication Modal */}
       <Modal
         opened={authFormOpened}
         onClose={closeAuthForm}
@@ -281,6 +311,8 @@ export default function Dashboard() {
           </Center>
         </form>
       </Modal>
+
+      {/* Main App Shell */}
       <AppShell
         header={{
           height: 48,
@@ -293,6 +325,7 @@ export default function Dashboard() {
         }}
         padding="md"
       >
+        {/* Header */}
         <AppShellHeader px="md" display="flex" style={{ alignItems: "center" }}>
           <Burger
             opened={navbarOpened}
@@ -312,6 +345,8 @@ export default function Dashboard() {
             }}
           />
         </AppShellHeader>
+
+        {/* Sidebar */}
         <AppShellNavbar p="md">
           <Flex
             align="center"
@@ -331,6 +366,8 @@ export default function Dashboard() {
               priority
             />
           </Flex>
+
+          {/* Date Filters */}
           <Box style={{ overflow: "auto" }}>
             <Stack gap={4} mb={32}>
               <DatePickerInput
@@ -360,6 +397,8 @@ export default function Dashboard() {
                 }}
               />
             </Stack>
+
+            {/* Saved Searches */}
             <Stack gap={8} mt={8}>
               <Text fz="sm" fw="500" c="dark.2">
                 Saved Searches
@@ -440,7 +479,7 @@ export default function Dashboard() {
                           }
                           onClick={async () => {
                             const { error } = await supabaseClient!
-                              .from("Searches")
+                              .from("searches")
                               .delete()
                               .eq("id", savedSearch.id);
 
@@ -464,12 +503,15 @@ export default function Dashboard() {
             </Stack>
           </Box>
         </AppShellNavbar>
+
+        {/* Main Content */}
         <AppShellMain bg="dark.8">
           <Container
             h={`calc(100vh - ${isMobile ? 8 : 7.5}em)`}
             w={isMobile ? "100%" : 768}
             px={0}
           >
+            {/* Search Input */}
             <Textarea
               rows={1}
               autosize
@@ -490,6 +532,8 @@ export default function Dashboard() {
                 }
               }}
             />
+
+            {/* Notes Container */}
             <Paper
               radius={4}
               withBorder
@@ -499,6 +543,7 @@ export default function Dashboard() {
               style={{ overflow: "auto" }}
               bg="dark.8"
             >
+              {/* Title Section */}
               <Group
                 wrap="nowrap"
                 align="flex-start"
@@ -533,7 +578,7 @@ export default function Dashboard() {
                           }
                           onClick={async (e) => {
                             const { data, error } = await supabaseClient!
-                              .from("Searches")
+                              .from("searches")
                               .insert({
                                 text: search.text,
                               })
@@ -579,9 +624,69 @@ export default function Dashboard() {
                   />
                 )}
                 <Text size="lg" fw={500} mb={24}>
-                  {search ? search.text : "All Notes"}
+                  {search ? search.text : "My Notes"}
                 </Text>
               </Group>
+
+              {/* Note Creator */}
+              {!search && (
+                <Text
+                  id="note-creator"
+                  ref={editableNoteRef}
+                  mb={16}
+                  ml={48}
+                  mr={48}
+                  className="text-box-edit"
+                  contentEditable
+                  data-placeholder="Start typing a new note..."
+                  onKeyDown={async (e) => {
+                    if (e.key == "Enter") {
+                      e.preventDefault();
+
+                      const noteText = editableNoteRef.current?.textContent;
+
+                      if (noteText) {
+                        editableNoteRef.current.textContent = "";
+
+                        const { data, error } = await supabaseClient!
+                          .from("notes")
+                          .insert([{ text: noteText, date: new Date().toISOString() }])
+                          .select();
+
+                        if (error) {
+                          console.log(error);
+                          return;
+                        }
+
+                        const newNoteId = data[0].id;
+
+                        setNotes((notes) => [
+                          { id: newNoteId, text: noteText, date: new Date().toISOString() },
+                          ...notes,
+                        ]);
+
+                        const embeddingResponse = await fetch(
+                          `/embed?text=${encodeURIComponent(noteText)}`,
+                        );
+                        const { embedding } = await embeddingResponse.json();                        
+
+                        // Update database with the embedding
+                        const { error: embeddingError } = await supabaseClient!
+                          .from("notes")
+                          .update({ embedding: embedding })
+                          .eq("id", newNoteId);
+
+                        if (embeddingError) {
+                          console.log(embeddingError);
+                          return;
+                        }
+                      }
+                    }
+                  }}
+                />
+              )}
+
+              {/* Notes List */}
               <Stack>
                 {notes ? (
                   <>
@@ -620,9 +725,7 @@ export default function Dashboard() {
                               <MenuDropdown>
                                 <MenuItem
                                   leftSection={
-                                    <IconSearch
-                                      style={{ width: 16, height: 16 }}
-                                    />
+                                    <IconSearch style={{ width: 16, height: 16 }} />
                                   }
                                   onClick={async (e) => {
                                     router.push(
@@ -633,6 +736,23 @@ export default function Dashboard() {
                                   }}
                                 >
                                   Search for similar notes
+                                </MenuItem>
+                                <MenuItem
+                                  leftSection={
+                                    <IconTrash style={{ width: 16, height: 16 }} />
+                                  }
+                                  onClick={async () => {
+                                    const { error } = await supabaseClient!
+                                      .from("notes")
+                                      .delete()
+                                      .eq("id", note.id);
+
+                                    if (!error) {
+                                      setNotes(notes.filter((n) => n.id !== note.id));
+                                    }
+                                  }}
+                                >
+                                  Delete
                                 </MenuItem>
                                 <Menu.Divider />
                                 <Stack px={12} pt={4} pb={2} gap={2}>
